@@ -148,12 +148,15 @@ class TestFallbackChains:
 
     def test_chains_ordered_by_ip_ban_risk(self) -> None:
         """Equity chains lead with throttle-tolerant public sources and trail
-        with key-gated REST fallbacks, in the exact reviewed order."""
+        with key-gated REST fallbacks, in the exact reviewed order. Alpaca is
+        the one deliberate exception: configuring its key pair is an explicit
+        opt-in to exchange-grade bars, so it precedes the public sources and
+        drops out of the chain (is_available()=False) when unconfigured."""
         assert FALLBACK_CHAINS["a_share"] == [
             "tencent", "mootdx", "eastmoney", "baostock", "akshare", "tushare", "local",
         ]
         assert FALLBACK_CHAINS["us_equity"] == [
-            "yahoo", "stooq", "sina", "eastmoney", "yfinance", "tiingo", "fmp",
+            "alpaca", "yahoo", "stooq", "sina", "eastmoney", "yfinance", "tiingo", "fmp",
             "finnhub", "alphavantage", "akshare", "local",
         ]
         assert FALLBACK_CHAINS["hk_equity"] == [
