@@ -34,6 +34,7 @@ VALID_SOURCES: set[str] = {
     "tushare",
     "okx",
     "yfinance",
+    "alpaca",
     "akshare",
     "baostock",
     "tencent",
@@ -80,6 +81,7 @@ def _ensure_registered() -> None:
         "backtest.loaders.tushare",
         "backtest.loaders.okx",
         "backtest.loaders.yfinance_loader",
+        "backtest.loaders.alpaca_loader",
         "backtest.loaders.akshare_loader",
         "backtest.loaders.baostock_loader",
         "backtest.loaders.tencent_loader",
@@ -127,7 +129,10 @@ _NO_NETWORK_FALLBACK_SOURCES: frozenset[str] = frozenset({"local", "qveris"})  #
 # REST fallbacks placed deeper in the chain.
 FALLBACK_CHAINS: dict[str, list[str]] = {
     "a_share":   ["tencent", "mootdx", "eastmoney", "baostock", "akshare", "tushare", "local"],
-    "us_equity": ["yahoo", "stooq", "sina", "eastmoney", "yfinance", "tiingo", "fmp", "finnhub", "alphavantage", "akshare", "local"],
+    # Alpaca leads despite being key-gated: when a key pair is configured the
+    # user is opting into exchange-grade (SIP/IEX) bars over scraped public
+    # sources; without keys is_available() is False and the chain walks on.
+    "us_equity": ["alpaca", "yahoo", "stooq", "sina", "eastmoney", "yfinance", "tiingo", "fmp", "finnhub", "alphavantage", "akshare", "local"],
     "hk_equity": ["eastmoney", "yahoo", "futu", "yfinance", "akshare", "local"],
     "india_equity": ["yahoo", "yfinance", "india_broker", "local"],
     "crypto":    ["okx", "ccxt", "yfinance", "local"],
