@@ -35,6 +35,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+from board import ETFS, cluster_of, next_earnings, parse_occ, portfolio_heat, print_heat
+
 RISK_FREE_RATE = 0.04
 ENV_FALLBACK = Path.home() / ".vibe-trading" / ".env"
 
@@ -60,21 +62,6 @@ def load_keys() -> tuple[str, str]:
             f"or put them in {ENV_FALLBACK}"
         )
     return key, secret
-
-
-def parse_occ(symbol: str) -> tuple[str, date, str, float]:
-    """Split an OCC option symbol into (root, expiration, C/P, strike).
-
-    Snapshots key by OCC symbol and carry no strike/expiry fields, so the
-    symbol itself is the source of truth: last 15 chars = yymmdd + C/P +
-    strike*1000 zero-padded to 8.
-    """
-    tail = symbol[-15:]
-    root = symbol[:-15]
-    exp = datetime.strptime(tail[:6], "%y%m%d").date()
-    cp = tail[6]
-    strike = int(tail[7:]) / 1000.0
-    return root, exp, cp, strike
 
 
 def norm_cdf(x: float) -> float:
@@ -267,6 +254,10 @@ def main() -> None:
     ap.add_argument("--long", type=float, help="pin long strike")
     ap.add_argument("--limit", type=float, help="override net-credit limit for --submit")
     ap.add_argument("--submit", action="store_true", help="submit top/pinned spread to PAPER")
+    ap.add_argument("--earnings", help="override next earnings date YYYY-MM-DD")
+    ap.add_argument("--no-earnings-check", action="store_true", help="skip the earnings lookup")
+    ap.add_argument("--max-heat", type=float, default=15.0, help="cap on total max loss, %% of equity")
+    ap.add_argument("--allow-cluster-dup", action="store_true", help="permit a second position in an occupied cluster")
     args = ap.parse_args()
 
     from alpaca.data.historical.option import OptionHistoricalDataClient
@@ -297,6 +288,37 @@ def main() -> None:
     print(f"{symbol} spot {spot:.2f}  ({trade.timestamp})  support {args.support:.2f}")
     if spot <= args.support:
         print(f"[warn] spot is AT/BELOW support — bullish-above-{args.support:g} thesis not active")
+
+    # ---- earnings ---------------------------------------------------------
+    earnings: date | None = None
+    if not args.no_earnings_check:
+        earnings = date.fromisoformat(args.earnings) if args.earnings else next_earnings(symbol)
+        if earnings:
+            inside = "  (inside DTE window: those expiries are skipped)" if earnings <= exp_lte else ""
+            print(f"next earnings: {earnings}{inside}")
+        elif symbol not in ETFS:
+            print("[warn] earnings date unknown — confirm manually before entry")
+
+    # ---- equity + open book ----------------------------------------------
+    equity = args.equity
+    if equity is None:
+        try:
+            equity = float(trading_client.get_account().equity)
+            print(f"paper account equity: {equity:,.0f}")
+        except Exception:
+            equity = 100_000.0
+            print("[warn] could not read account equity; sizing on 100,000")
+    conviction = 1.0 if args.conviction == "full" else 0.5
+    try:
+        book = portfolio_heat(trading_client)
+    except Exception as exc:
+        print(f"[warn] could not read open positions: {exc}")
+        book = []
+    heat = print_heat(book, equity, args.max_heat)
+    cluster = cluster_of(symbol)
+    occupied = {sp.cluster for sp in book if sp.cluster}
+    if cluster and cluster in occupied:
+        print(f"[cluster] {cluster} already has an open position — new entry needs --allow-cluster-dup")
 
     # ---- chain ------------------------------------------------------------
     chain = fetch_chain(data_client, symbol, exp_gte, exp_lte, args.feed)
@@ -331,6 +353,9 @@ def main() -> None:
 
     for exp in sorted(by_exp):
         dte = (exp - today).days
+        if earnings and today <= earnings <= exp:
+            print(f"\n{exp} ({dte} DTE): skipped — earnings {earnings} falls inside the trade")
+            continue
         t_years = dte / 365.0
         puts, calls = by_exp[exp]["P"], by_exp[exp]["C"]
         em, straddle, atm_iv = expected_move(spot, puts, calls, t_years)
@@ -365,16 +390,6 @@ def main() -> None:
 
     if not candidates:
         sys.exit("\nNo spreads under the strike floor with positive credit. Walk.")
-
-    equity = args.equity
-    if equity is None:
-        try:
-            equity = float(trading_client.get_account().equity)
-            print(f"\npaper account equity: {equity:,.0f}")
-        except Exception:
-            equity = 100_000.0
-            print("\n[warn] could not read account equity; sizing on 100,000")
-    conviction = 1.0 if args.conviction == "full" else 0.5
 
     candidates.sort(key=lambda s: s.credit_over_width, reverse=True)
     print(
@@ -418,6 +433,10 @@ def main() -> None:
         f"(max loss {pick.max_loss * 100 * max(qty, 1):,.0f} on {max(qty,1)} lots)"
     )
     print(f"management: take profit at {credit / 2:.2f} debit (50%), hard close at 21 DTE")
+    new_risk = pick.max_loss * 100 * qty
+    heat_after = heat + new_risk
+    heat_after_pct = heat_after / equity * 100 if heat_after != float("inf") else float("inf")
+    print(f"heat after entry: {heat_after:,.0f} = {heat_after_pct:.1f}% of equity (cap {args.max_heat:.0f}%)")
     if pick.credit_over_width < args.credit_gate:
         print(
             f"[gate] credit/width {pick.credit_over_width:.1%} < {args.credit_gate:.0%} "
@@ -431,6 +450,10 @@ def main() -> None:
         sys.exit("sized to 0 contracts; refusing to submit")
     if pick.credit_over_width < args.credit_gate and args.limit is None:
         sys.exit("credit gate failed; refusing to submit without an explicit --limit")
+    if heat_after_pct > args.max_heat:
+        sys.exit(f"heat cap: entry would put {heat_after_pct:.1f}% of equity at risk (> {args.max_heat:.0f}%); refusing")
+    if cluster and cluster in occupied and not args.allow_cluster_dup:
+        sys.exit(f"cluster cap: {cluster} already occupied; pass --allow-cluster-dup to override")
     order = submit_paper_order(trading_client, pick, qty, credit)
     print(f"\nPAPER order submitted: id={order.id} status={order.status}")
 

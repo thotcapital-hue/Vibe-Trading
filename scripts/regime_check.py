@@ -35,20 +35,7 @@ VIX_CSV = "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.c
 MAG7 = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA"]
 SECTORS = ["XLK", "XLF", "XLV", "XLP", "XLE", "XLI", "XLY", "XLU", "XLB", "XLRE", "XLC"]
 
-# Board universe by risk cluster: max ONE open position per cluster, max two
-# clusters from {tech, semis, index} combined. Names chosen for penny-wide,
-# deep-OI option chains.
-CLUSTERS: dict[str, list[str]] = {
-    "tech/mega": ["AAPL", "MSFT", "GOOGL", "META", "AMZN", "QQQ"],
-    "semis": ["NVDA", "AVGO", "AMD", "SMH"],
-    "index": ["SPY", "IWM", "DIA"],
-    "financials": ["JPM", "GS", "BAC", "XLF", "V", "MA"],
-    "healthcare": ["LLY", "JNJ", "UNH", "XLV"],
-    "staples/defensive": ["WMT", "COST", "PG", "KO", "XLP"],
-    "energy": ["XOM", "CVX", "XLE"],
-    "industrials": ["CAT", "GE", "HON", "XLI"],
-    "rates/metals": ["TLT", "GLD", "SLV"],
-}
+from board import CLUSTERS
 
 
 def load_keys() -> tuple[str, str]:
