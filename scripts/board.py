@@ -30,6 +30,48 @@ CLUSTERS: dict[str, list[str]] = {
 ETFS = {"QQQ", "SMH", "SPY", "IWM", "DIA", "XLF", "XLV", "XLP", "XLE", "XLI",
         "TLT", "GLD", "SLV", "XLK", "XLY", "XLU", "XLB", "XLRE", "XLC", "RSP"}
 
+# Call-side watch: broken/downtrending names for bear call spreads (v4 two-sided).
+CALL_SIDE_WATCH: dict[str, list[str]] = {
+    "alt managers (private credit)": ["BX", "KKR", "APO", "ARES", "OWL"],
+}
+
+# Regime / breadth inputs used by regime_check.py.
+REGIME_SYMBOLS: dict[str, list[str]] = {
+    "regime": ["SPY", "RSP", "IWM", "TVC:VIX"],
+    "sectors": ["XLK", "XLF", "XLV", "XLP", "XLE", "XLI", "XLY", "XLU", "XLB", "XLRE", "XLC"],
+    "mag-7": ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA"],
+}
+
+# TradingView exchange prefixes (ETFs listed on NYSE Arca are AMEX: on TradingView).
+_NASDAQ = {"AAPL", "MSFT", "GOOGL", "META", "AMZN", "QQQ", "NVDA", "AVGO", "AMD", "SMH",
+           "COST", "HON", "TLT", "TSLA"}
+_AMEX = {"SPY", "IWM", "DIA", "XLF", "XLV", "XLP", "XLE", "XLI", "GLD", "SLV", "RSP",
+         "XLK", "XLY", "XLU", "XLB", "XLRE", "XLC"}
+
+
+def tv_symbol(symbol: str) -> str:
+    if ":" in symbol:
+        return symbol
+    if symbol in _NASDAQ:
+        return f"NASDAQ:{symbol}"
+    if symbol in _AMEX:
+        return f"AMEX:{symbol}"
+    return f"NYSE:{symbol}"
+
+
+def tradingview_watchlist() -> str:
+    """TradingView import format: comma-separated symbols, ``###`` section headers."""
+    sections: list[tuple[str, list[str]]] = []
+    sections += [(f"PUT SIDE — {name}", syms) for name, syms in CLUSTERS.items()]
+    sections += [(f"CALL SIDE — {name}", syms) for name, syms in CALL_SIDE_WATCH.items()]
+    sections += [(f"REGIME — {name}", syms) for name, syms in REGIME_SYMBOLS.items()]
+    parts: list[str] = []
+    for title, syms in sections:
+        parts.append(f"###{title}")
+        parts.append(",".join(tv_symbol(s) for s in syms))
+    return ",".join(parts) + "\n"
+
+
 _AGENT_DIR = Path(__file__).resolve().parent.parent / "agent"
 
 
@@ -166,3 +208,8 @@ def print_heat(spreads: list[OpenSpread], equity: float, cap_pct: float) -> floa
     status = "OVER CAP" if pct > cap_pct else "ok"
     print(f"portfolio heat: {total:,.0f} = {pct:.1f}% of equity (cap {cap_pct:.0f}%) {status}")
     return total
+
+
+if __name__ == "__main__":
+    # `python scripts/board.py > board_watchlist.txt` — TradingView import file.
+    sys.stdout.write(tradingview_watchlist())
