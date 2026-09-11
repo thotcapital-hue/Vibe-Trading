@@ -35,7 +35,7 @@ VIX_CSV = "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.c
 MAG7 = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA"]
 SECTORS = ["XLK", "XLF", "XLV", "XLP", "XLE", "XLI", "XLY", "XLU", "XLB", "XLRE", "XLC"]
 
-from board import CLUSTERS
+from board import CALL_SIDE_WATCH, CLUSTERS, cluster_of
 
 
 def load_keys() -> tuple[str, str]:
@@ -94,7 +94,9 @@ def main() -> None:
 
     key, secret = load_keys()
     client = StockHistoricalDataClient(key, secret)
-    universe = sorted(set(["SPY", "RSP", "IWM"] + MAG7 + SECTORS))
+    board_syms = sorted({s for syms in CLUSTERS.values() for s in syms}
+                        | {s for syms in CALL_SIDE_WATCH.values() for s in syms})
+    universe = sorted(set(["SPY", "RSP", "IWM"] + MAG7 + SECTORS + board_syms))
     closes = fetch_closes(client, universe)
     missing = [s for s in universe if s not in closes]
     if missing:
@@ -188,6 +190,30 @@ def main() -> None:
         print(f"  - {f}")
     if verdict == "RED":
         print("  -> put spreads OFF; bear call spreads on broken names only (v4 two-sided)")
+
+    # ---- per-stock board table ------------------------------------------
+    # Side eligibility is the trend test: above both MAs -> put side; below
+    # both -> call side; anything else is chop and sits out.
+    print(f"\n{'symbol':<7} {'last':>9} {'50-DMA':>9} {'vs50':>7} {'200-DMA':>9} {'vs200':>7} "
+          f"{'off 20d hi':>10}  {'cluster':<18} side")
+    for s in board_syms:
+        c = closes.get(s)
+        if not c or len(c) < 200:
+            print(f"{s:<7} {'no data':>9}")
+            continue
+        last, s50, s200 = c[-1], sma(c, 50), sma(c, 200)
+        v50, v200 = last / s50 - 1, last / s200 - 1
+        off_hi = last / max(c[-20:]) - 1
+        if last > s50 and last > s200:
+            side = "PUT-eligible"
+        elif last < s50 and last < s200:
+            side = "CALL-eligible"
+        else:
+            side = "chop"
+        call_watch = any(s in v for v in CALL_SIDE_WATCH.values())
+        cl = cluster_of(s) or ("call-watch" if call_watch else "-")
+        print(f"{s:<7} {last:>9.2f} {s50:>9.2f} {v50:>+7.1%} {s200:>9.2f} {v200:>+7.1%} "
+              f"{off_hi:>+10.1%}  {cl:<18} {side}")
 
     print("\nBoard clusters (max one open position per cluster):")
     for name, syms in CLUSTERS.items():
