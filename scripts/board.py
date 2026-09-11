@@ -149,7 +149,7 @@ class OpenSpread:
         return cluster_of(self.underlying)
 
 
-def portfolio_heat(trading_client) -> list[OpenSpread]:
+def portfolio_heat(client) -> list[OpenSpread]:
     """Pair open short options with their long legs into defined-risk spreads.
 
     Pairing is by underlying, expiration and type: each short leg takes the
@@ -157,16 +157,14 @@ def portfolio_heat(trading_client) -> list[OpenSpread]:
     with quantity still unassigned. Anything left unpaired is reported as
     NAKED with infinite max loss so the heat cap fails closed.
     """
-    from alpaca.trading.enums import AssetClass
-
     shorts: dict[tuple, list] = {}
     longs: dict[tuple, list] = {}
-    for p in trading_client.get_all_positions():
-        if p.asset_class != AssetClass.US_OPTION:
+    for p in client.positions():  # alpaca_rest.AlpacaREST (paper endpoint)
+        if p.get("asset_class") != "us_option":
             continue
-        root, exp, cp, strike = parse_occ(p.symbol)
-        qty = int(float(p.qty))
-        price = float(p.avg_entry_price or 0)
+        root, exp, cp, strike = parse_occ(p["symbol"])
+        qty = int(float(p["qty"]))
+        price = float(p.get("avg_entry_price") or 0)
         bucket = shorts if qty < 0 else longs
         bucket.setdefault((root, exp, cp), []).append([strike, abs(qty), price])
 

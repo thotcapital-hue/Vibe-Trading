@@ -35,6 +35,7 @@ VIX_CSV = "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.c
 MAG7 = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA"]
 SECTORS = ["XLK", "XLF", "XLV", "XLP", "XLE", "XLI", "XLY", "XLU", "XLB", "XLRE", "XLC"]
 
+from alpaca_rest import AlpacaREST
 from board import CALL_SIDE_WATCH, CLUSTERS, cluster_of
 
 
@@ -53,17 +54,11 @@ def load_keys() -> tuple[str, str]:
     return key, secret
 
 
-def fetch_closes(client, symbols: list[str], days: int = 320) -> dict[str, list[float]]:
-    from alpaca.data.requests import StockBarsRequest
-    from alpaca.data.timeframe import TimeFrame
-
+def fetch_closes(client: AlpacaREST, symbols: list[str], days: int = 320) -> dict[str, list[float]]:
     start = datetime.now(timezone.utc) - timedelta(days=days)
     for feed in ("sip", "iex"):
         try:
-            bars = client.get_stock_bars(
-                StockBarsRequest(symbol_or_symbols=symbols, timeframe=TimeFrame.Day, start=start, feed=feed)
-            )
-            return {sym: [float(b.close) for b in blist] for sym, blist in bars.data.items()}
+            return client.daily_closes(symbols, start, feed)
         except Exception as exc:
             if feed == "iex":
                 raise
@@ -90,10 +85,8 @@ def main() -> None:
     ap.add_argument("--vix", type=float, help="VIX level (skips CBOE fetch)")
     args = ap.parse_args()
 
-    from alpaca.data.historical.stock import StockHistoricalDataClient
-
     key, secret = load_keys()
-    client = StockHistoricalDataClient(key, secret)
+    client = AlpacaREST(key, secret)
     board_syms = sorted({s for syms in CLUSTERS.values() for s in syms}
                         | {s for syms in CALL_SIDE_WATCH.values() for s in syms})
     universe = sorted(set(["SPY", "RSP", "IWM"] + MAG7 + SECTORS + board_syms))

@@ -18,6 +18,8 @@ Data: Alpaca options snapshots (Greeks/IV/NBBO, OPRA with indicative
 fallback); OI from the trading API contracts endpoint. Orders are one
 multi-leg (mleg) net-credit DAY limit, HARDWIRED TO THE PAPER ENDPOINT.
 Credentials: ALPACA_API_KEY / ALPACA_SECRET_KEY or ~/.vibe-trading/.env.
+Talks to Alpaca over plain REST (scripts/alpaca_rest.py) -- no SDK, no
+pip install needed beyond the standard library.
 
 Usage:
     python scripts/spread_scan.py AAPL --side put  --level 300
@@ -36,6 +38,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+from alpaca_rest import APIError, AlpacaREST
 from board import ETFS, cluster_of, next_earnings, parse_occ, portfolio_heat, print_heat
 
 RISK_FREE_RATE = 0.04
@@ -136,21 +139,11 @@ class Spread:
         return self.side == "call" and self.skew is not None and self.skew < 0
 
 
-def fetch_chain(data_client, symbol: str, exp_gte: date, exp_lte: date, feed: str):
+def fetch_chain(client: AlpacaREST, symbol: str, exp_gte: date, exp_lte: date, feed: str) -> dict[str, dict]:
     """Pull the snapshot chain (both types), falling back to the indicative feed."""
-    from alpaca.common.exceptions import APIError
-    from alpaca.data.requests import OptionChainRequest
-
     for attempt_feed in (feed, "indicative"):
         try:
-            chain = data_client.get_option_chain(
-                OptionChainRequest(
-                    underlying_symbol=symbol,
-                    expiration_date_gte=exp_gte,
-                    expiration_date_lte=exp_lte,
-                    feed=attempt_feed,
-                )
-            )
+            chain = client.option_chain(symbol, exp_gte, exp_lte, attempt_feed)
             if attempt_feed != feed:
                 print(f"[warn] {feed} feed unavailable; using indicative quotes")
             return chain
@@ -161,33 +154,14 @@ def fetch_chain(data_client, symbol: str, exp_gte: date, exp_lte: date, feed: st
     return {}
 
 
-def fetch_open_interest(trading_client, symbol: str, side: str, exp_gte: date, exp_lte: date, level: float) -> dict[str, int]:
+def fetch_open_interest(client: AlpacaREST, symbol: str, side: str, exp_gte: date, exp_lte: date, level: float) -> dict[str, int]:
     """OCC symbol -> open interest for legs beyond the level (best effort)."""
-    from alpaca.trading.enums import ContractType
-    from alpaca.trading.requests import GetOptionContractsRequest
-
     oi: dict[str, int] = {}
-    token = None
     bound = {"strike_price_lte": str(level)} if side == "put" else {"strike_price_gte": str(level)}
     try:
-        while True:
-            resp = trading_client.get_option_contracts(
-                GetOptionContractsRequest(
-                    underlying_symbols=[symbol],
-                    expiration_date_gte=exp_gte,
-                    expiration_date_lte=exp_lte,
-                    type=ContractType.PUT if side == "put" else ContractType.CALL,
-                    limit=10000,
-                    page_token=token,
-                    **bound,
-                )
-            )
-            for c in resp.option_contracts or []:
-                if c.open_interest is not None:
-                    oi[c.symbol] = int(c.open_interest)
-            token = resp.next_page_token
-            if not token:
-                break
+        for c in client.option_contracts(symbol, exp_gte, exp_lte, side, **bound):
+            if c.get("open_interest") is not None:
+                oi[c["symbol"]] = int(float(c["open_interest"]))
     except Exception as exc:  # OI is advisory; never kill the scan over it
         print(f"[warn] open-interest lookup failed: {exc}")
     return oi
@@ -289,29 +263,18 @@ def size_position(equity: float, risk_pct: float, conviction: float, max_loss: f
     return max(int(equity * (risk_pct / 100.0) * conviction // (max_loss * 100.0)), 0)
 
 
-def submit_paper_order(trading_client, spread: Spread, qty: int, limit_credit: float):
+def submit_paper_order(client: AlpacaREST, spread: Spread, qty: int, limit_credit: float) -> dict:
     """Place the spread as one mleg net-credit DAY limit order on PAPER.
 
     Alpaca's multi-leg convention: negative limit price = net credit received.
     Leg roles are identical for both sides: sell the short strike to open,
     buy the protective strike to open.
     """
-    from alpaca.trading.enums import OrderClass, OrderSide, PositionIntent, TimeInForce
-    from alpaca.trading.requests import LimitOrderRequest, OptionLegRequest
-
-    order = LimitOrderRequest(
-        qty=qty,
-        limit_price=-round(limit_credit, 2),
-        order_class=OrderClass.MLEG,
-        time_in_force=TimeInForce.DAY,
-        legs=[
-            OptionLegRequest(symbol=spread.short.symbol, ratio_qty=1, side=OrderSide.SELL,
-                             position_intent=PositionIntent.SELL_TO_OPEN),
-            OptionLegRequest(symbol=spread.long.symbol, ratio_qty=1, side=OrderSide.BUY,
-                             position_intent=PositionIntent.BUY_TO_OPEN),
-        ],
-    )
-    return trading_client.submit_order(order)
+    legs = [
+        {"symbol": spread.short.symbol, "ratio_qty": "1", "side": "sell", "position_intent": "sell_to_open"},
+        {"symbol": spread.long.symbol, "ratio_qty": "1", "side": "buy", "position_intent": "buy_to_open"},
+    ]
+    return client.submit_mleg_limit_order(legs, qty, -round(limit_credit, 2))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -353,15 +316,8 @@ def main(argv: list[str] | None = None) -> None:
         args.delta_max if args.delta_max is not None else cfg["delta"][1],
     )
 
-    from alpaca.data.historical.option import OptionHistoricalDataClient
-    from alpaca.data.historical.stock import StockHistoricalDataClient
-    from alpaca.data.requests import StockLatestTradeRequest
-    from alpaca.trading.client import TradingClient
-
     key, secret = load_keys()
-    data_client = OptionHistoricalDataClient(key, secret)
-    stock_client = StockHistoricalDataClient(key, secret)
-    trading_client = TradingClient(key, secret, paper=True)  # paper only, by design
+    client = AlpacaREST(key, secret)  # trading calls go to the paper endpoint only, by design
 
     symbol = args.symbol.upper()
     today = datetime.now(timezone.utc).date()
@@ -370,15 +326,10 @@ def main(argv: list[str] | None = None) -> None:
 
     # ---- spot -------------------------------------------------------------
     try:
-        trade = stock_client.get_stock_latest_trade(
-            StockLatestTradeRequest(symbol_or_symbols=symbol, feed="sip")
-        )[symbol]
-    except Exception:
-        trade = stock_client.get_stock_latest_trade(
-            StockLatestTradeRequest(symbol_or_symbols=symbol, feed="iex")
-        )[symbol]
-    spot = float(trade.price)
-    print(f"{symbol} {side.upper()} side  spot {spot:.2f}  ({trade.timestamp})  {cfg['level']} {args.level:.2f}")
+        spot, spot_ts = client.latest_trade(symbol, "sip")
+    except APIError:
+        spot, spot_ts = client.latest_trade(symbol, "iex")
+    print(f"{symbol} {side.upper()} side  spot {spot:.2f}  ({spot_ts})  {cfg['level']} {args.level:.2f}")
     thesis_off = spot <= args.level if side == "put" else spot >= args.level
     if thesis_off:
         print(f"[warn] spot is on the wrong side of {cfg['level']} — {cfg['thesis']}-{args.level:g} thesis not active")
@@ -397,14 +348,14 @@ def main(argv: list[str] | None = None) -> None:
     equity = args.equity
     if equity is None:
         try:
-            equity = float(trading_client.get_account().equity)
+            equity = float(client.account()["equity"])
             print(f"paper account equity: {equity:,.0f}")
         except Exception:
             equity = 100_000.0
             print("[warn] could not read account equity; sizing on 100,000")
     conviction = 1.0 if args.conviction == "full" else 0.5
     try:
-        book = portfolio_heat(trading_client)
+        book = portfolio_heat(client)
     except Exception as exc:
         print(f"[warn] could not read open positions: {exc}")
         book = []
@@ -415,27 +366,27 @@ def main(argv: list[str] | None = None) -> None:
         print(f"[cluster] {cluster} already has an open position — new entry needs --allow-cluster-dup")
 
     # ---- chain ------------------------------------------------------------
-    chain = fetch_chain(data_client, symbol, exp_gte, exp_lte, args.feed)
+    chain = fetch_chain(client, symbol, exp_gte, exp_lte, args.feed)
     by_exp: dict[date, dict[str, dict[float, Leg]]] = {}
     for occ, snap in chain.items():
         _, exp, cp, strike = parse_occ(occ)
-        q = snap.latest_quote
-        if q is None:
+        q = snap.get("latestQuote")
+        if not q:
             continue
-        greeks = getattr(snap, "greeks", None)
+        greeks = snap.get("greeks") or {}
         by_exp.setdefault(exp, {"P": {}, "C": {}})[cp][strike] = Leg(
             symbol=occ,
             strike=strike,
-            bid=float(q.bid_price or 0),
-            ask=float(q.ask_price or 0),
-            iv=getattr(snap, "implied_volatility", None),
-            delta=getattr(greeks, "delta", None) if greeks else None,
+            bid=float(q.get("bp") or 0),
+            ask=float(q.get("ap") or 0),
+            iv=snap.get("impliedVolatility"),
+            delta=greeks.get("delta"),
         )
     if not by_exp:
         sys.exit("no contracts returned in the DTE window")
 
     oi_map = (
-        fetch_open_interest(trading_client, symbol, side, exp_gte, exp_lte, args.level)
+        fetch_open_interest(client, symbol, side, exp_gte, exp_lte, args.level)
         if args.min_oi > 0 else {}
     )
     widths = [float(w) for w in args.widths.split(",") if w.strip()]
@@ -511,8 +462,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(f"heat cap: entry would put {heat_after_pct:.1f}% of equity at risk (> {args.max_heat:.0f}%); refusing")
     if cluster and cluster in occupied and not args.allow_cluster_dup:
         sys.exit(f"cluster cap: {cluster} already occupied; pass --allow-cluster-dup to override")
-    order = submit_paper_order(trading_client, pick, qty, credit)
-    print(f"\nPAPER order submitted: id={order.id} status={order.status}")
+    order = submit_paper_order(client, pick, qty, credit)
+    print(f"\nPAPER order submitted: id={order['id']} status={order['status']}")
 
 
 if __name__ == "__main__":
