@@ -44,7 +44,7 @@ REGIME_SYMBOLS: dict[str, list[str]] = {
 
 # TradingView exchange prefixes (ETFs listed on NYSE Arca are AMEX: on TradingView).
 _NASDAQ = {"AAPL", "MSFT", "GOOGL", "META", "AMZN", "QQQ", "NVDA", "AVGO", "AMD", "SMH",
-           "COST", "HON", "TLT", "TSLA"}
+           "COST", "HON", "TLT", "TSLA", "WMT"}
 _AMEX = {"SPY", "IWM", "DIA", "XLF", "XLV", "XLP", "XLE", "XLI", "GLD", "SLV", "RSP",
          "XLK", "XLY", "XLU", "XLB", "XLRE", "XLC"}
 
