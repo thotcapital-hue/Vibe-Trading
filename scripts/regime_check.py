@@ -37,6 +37,7 @@ SECTORS = ["XLK", "XLF", "XLV", "XLP", "XLE", "XLI", "XLY", "XLU", "XLB", "XLRE"
 
 from alpaca_rest import AlpacaREST
 from board import CALL_SIDE_WATCH, CLUSTERS, cluster_of
+from tasty_rest import iv_metrics, tasty_available
 
 
 def load_keys() -> tuple[str, str]:
@@ -186,11 +187,23 @@ def main() -> None:
 
     # ---- per-stock board table ------------------------------------------
     # Side eligibility is the trend test: above both MAs -> put side; below
-    # both -> call side; anything else is chop and sits out.
+    # both -> call side; anything else is chop and sits out. IVR is the
+    # tastytrade IV rank (0-100): premium is only worth selling when it is
+    # rich for the name, so scan the high-IVR eligible rows first.
+    ivm: dict[str, dict] = {}
+    if tasty_available():
+        try:
+            ivm = iv_metrics(board_syms)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] IV rank lookup failed: {exc}")
+    else:
+        print("\n[info] IV rank column unavailable: set TASTY_CLIENT_SECRET / TASTY_REFRESH_TOKEN")
     print(f"\n{'symbol':<7} {'last':>9} {'50-DMA':>9} {'vs50':>7} {'200-DMA':>9} {'vs200':>7} "
-          f"{'off 20d hi':>10}  {'cluster':<18} side")
+          f"{'off 20d hi':>10} {'IVR':>4}  {'cluster':<18} side")
     for s in board_syms:
         c = closes.get(s)
+        ivr = (ivm.get(s) or {}).get("ivr")
+        ivr_txt = f"{ivr:>4.0f}" if ivr is not None else f"{'-':>4}"
         if not c or len(c) < 200:
             print(f"{s:<7} {'no data':>9}")
             continue
@@ -206,7 +219,15 @@ def main() -> None:
         call_watch = any(s in v for v in CALL_SIDE_WATCH.values())
         cl = cluster_of(s) or ("call-watch" if call_watch else "-")
         print(f"{s:<7} {last:>9.2f} {s50:>9.2f} {v50:>+7.1%} {s200:>9.2f} {v200:>+7.1%} "
-              f"{off_hi:>+10.1%}  {cl:<18} {side}")
+              f"{off_hi:>+10.1%} {ivr_txt}  {cl:<18} {side}")
+
+    if ivm:
+        rich = sorted((s for s in board_syms if (ivm.get(s) or {}).get("ivr", -1) >= 50),
+                      key=lambda s: -ivm[s]["ivr"])
+        cheap = [s for s in board_syms if (ivm.get(s) or {}).get("ivr") is not None and ivm[s]["ivr"] < 30]
+        rich_txt = " ".join(f"{s}:{ivm[s]['ivr']:.0f}" for s in rich) or "none"
+        print(f"\npremium rich (IVR >= 50): {rich_txt}")
+        print(f"premium cheap (IVR < 30, do not sell): {' '.join(cheap) or 'none'}")
 
     print("\nBoard clusters (max one open position per cluster):")
     for name, syms in CLUSTERS.items():

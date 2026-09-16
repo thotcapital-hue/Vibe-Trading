@@ -22,8 +22,12 @@ Fed-day analysis in plain language is the model to follow.
 ## Trading rules in force (the "v4" board)
 
 - Scripts live in `scripts/`: `regime_check.py`, `put_spread_scan.py`,
-  `call_spread_scan.py`, `spread_scan.py`, `board.py`, `alpaca_rest.py`.
-  They talk to Alpaca over plain REST; no SDK install is needed.
+  `call_spread_scan.py`, `spread_scan.py`, `board.py`, `alpaca_rest.py`,
+  `tasty_rest.py`, `iv_board.py`. They talk to Alpaca and tastytrade over
+  plain REST; no SDK install is needed.
+- tastytrade is READ-ONLY (OAuth app created with the `read` scope only;
+  env vars TASTY_CLIENT_SECRET / TASTY_REFRESH_TOKEN). It supplies IV rank
+  via market-metrics. `tasty_rest.py` must never gain an order function.
 - Trading is PAPER only via `paper-api.alpaca.markets`. Never touch the live
   endpoint. Sanjay's real account is at Fidelity; only advise on it, never
   act on it.
@@ -33,3 +37,7 @@ Fed-day analysis in plain language is the model to follow.
   must sit beyond both the support/resistance level and the 1-SD expected
   move. Risk 1% of equity per trade times conviction. Portfolio heat cap 15%.
   One position per cluster.
+- IV-rank floor (added 2026-09-16): do not sell premium on a name whose
+  tastytrade IV rank is below 30 (`--min-iv-rank`, override only with
+  `--allow-low-ivr`). Rank >= 50 is "rich" and is where scans start.
+  `python scripts/iv_board.py` is the morning view sorted by IV rank.

@@ -9,8 +9,10 @@
              call-lean (greed/squeeze risk) unless --allow-call-lean.
 
 Shared rules: 30-45 DTE window, firm credit gate (mid credit >= 15% of
-width), open-interest floor per leg, earnings inside the trade excluded,
-portfolio-heat cap and one-position-per-cluster enforced on --submit.
+width), IV-rank floor (tastytrade market metrics; default 30 — do not sell
+premium that is cheap for the name), open-interest floor per leg, earnings
+inside the trade excluded, portfolio-heat cap and one-position-per-cluster
+enforced on --submit.
 Sizing = floor(equity * risk% * conviction / max loss). Management: take
 profit at 50% of credit, hard close at 21 DTE.
 
@@ -40,6 +42,7 @@ from pathlib import Path
 
 from alpaca_rest import APIError, AlpacaREST
 from board import ETFS, cluster_of, next_earnings, parse_occ, portfolio_heat, print_heat
+from tasty_rest import iv_metrics, ivr_label, tasty_available
 
 RISK_FREE_RATE = 0.04
 ENV_FALLBACK = Path.home() / ".vibe-trading" / ".env"
@@ -304,6 +307,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--max-heat", type=float, default=15.0, help="cap on total max loss, %% of equity")
     ap.add_argument("--allow-cluster-dup", action="store_true", help="permit a second position in an occupied cluster")
     ap.add_argument("--allow-call-lean", action="store_true", help="call side: submit even when 25Δ skew is call-lean")
+    ap.add_argument("--min-iv-rank", type=float, default=30.0, help="refuse to sell premium below this IV rank (0-100)")
+    ap.add_argument("--allow-low-ivr", action="store_true", help="submit even when IV rank is below --min-iv-rank")
+    ap.add_argument("--no-ivr", action="store_true", help="skip the tastytrade IV-rank lookup")
     return ap
 
 
@@ -343,6 +349,27 @@ def main(argv: list[str] | None = None) -> None:
             print(f"next earnings: {earnings}{inside}")
         elif symbol not in ETFS:
             print("[warn] earnings date unknown — confirm manually before entry")
+
+    # ---- IV rank (tastytrade market metrics) -----------------------------
+    ivr: float | None = None
+    if args.no_ivr:
+        pass
+    elif not tasty_available():
+        print("[info] IV rank unavailable: set TASTY_CLIENT_SECRET / TASTY_REFRESH_TOKEN")
+    else:
+        try:
+            m = iv_metrics([symbol]).get(symbol) or {}
+            ivr = m.get("ivr")
+            if ivr is None:
+                print("[warn] IV rank not returned for this symbol")
+            else:
+                iv_txt = f"{m['iv']:.1%}" if m.get("iv") is not None else "n/a"
+                ivp_txt = f"{m['ivp']:.0f}" if m.get("ivp") is not None else "n/a"
+                chg_txt = f"{m['chg5d']:+.1%}" if m.get("chg5d") is not None else "n/a"
+                print(f"IV rank {ivr:.0f}/100 ({ivr_label(ivr, args.min_iv_rank)})  IV index {iv_txt}  "
+                      f"1y percentile {ivp_txt}  5d change {chg_txt}  liquidity {m.get('liq') or '-'}")
+        except Exception as exc:  # noqa: BLE001 — advisory
+            print(f"[warn] IV rank lookup failed: {exc}")
 
     # ---- equity + open book ----------------------------------------------
     equity = args.equity
@@ -446,6 +473,10 @@ def main(argv: list[str] | None = None) -> None:
               "— v4 says WALK (or wait for a red day / vol pop)")
     if pick.call_lean:
         print(f"[skew] 25Δ skew {pick.skew:+.1f} vol is CALL-LEAN — v4 says skip bear calls (squeeze risk)")
+    low_ivr = ivr is not None and ivr < args.min_iv_rank
+    if low_ivr:
+        print(f"[ivr] IV rank {ivr:.0f} < {args.min_iv_rank:.0f} — premium is CHEAP for this name; "
+              "v4 says WAIT for a vol expansion rather than sell it")
 
     if not args.submit:
         print("\ndry run (pass --submit to place on PAPER)")
@@ -458,6 +489,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit("credit gate failed; refusing to submit without an explicit --limit")
     if pick.call_lean and not args.allow_call_lean:
         sys.exit("call-lean skew; refusing bear call spread without --allow-call-lean")
+    if low_ivr and not args.allow_low_ivr:
+        sys.exit(f"IV rank {ivr:.0f} below {args.min_iv_rank:.0f}; refusing to sell cheap premium without --allow-low-ivr")
     if heat_after_pct > args.max_heat:
         sys.exit(f"heat cap: entry would put {heat_after_pct:.1f}% of equity at risk (> {args.max_heat:.0f}%); refusing")
     if cluster and cluster in occupied and not args.allow_cluster_dup:

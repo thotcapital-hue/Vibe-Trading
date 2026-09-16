@@ -116,6 +116,67 @@ class TastyREST:
         return self.get(f"/option-chains/{symbol}/compact").get("data", {})
 
 
+def tasty_available() -> bool:
+    """True when both credentials are present in the environment."""
+    return bool(os.getenv("TASTY_CLIENT_SECRET") and os.getenv("TASTY_REFRESH_TOKEN"))
+
+
+def _pct(x) -> float | None:
+    """tastytrade returns rank/percentile as 0-1 fractions; normalise to 0-100."""
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return None
+    return v * 100.0 if v <= 1.0 else v
+
+
+def iv_metrics(symbols: list[str], client: "TastyREST | None" = None) -> dict[str, dict]:
+    """symbol -> {ivr, ivp, iv, chg5d, liq, earnings}. IV rank/percentile on a 0-100 scale.
+
+    ivr  = IV rank: where today's IV index sits between the 1-year low (0) and high (100).
+    ivp  = IV percentile: share of the past year's days with IV below today's.
+    iv   = IV index (30-day implied vol, as a fraction, e.g. 0.29 = 29%).
+    Chunks requests at 50 symbols; skips silently on per-chunk failure.
+    """
+    client = client or TastyREST()
+    out: dict[str, dict] = {}
+    for i in range(0, len(symbols), 50):
+        chunk = symbols[i:i + 50]
+        try:
+            raw = client.market_metrics(chunk)
+        except TastyError as exc:
+            print(f"[warn] market-metrics failed for {len(chunk)} symbols: HTTP {exc.status}")
+            continue
+        for sym, it in raw.items():
+            try:
+                iv = float(it.get("implied-volatility-index"))
+            except (TypeError, ValueError):
+                iv = None
+            try:
+                chg = float(it.get("implied-volatility-index-5-day-change"))
+            except (TypeError, ValueError):
+                chg = None
+            out[sym] = {
+                "ivr": _pct(it.get("implied-volatility-index-rank")),
+                "ivp": _pct(it.get("implied-volatility-percentile")),
+                "iv": iv,
+                "chg5d": chg,
+                "liq": it.get("liquidity-rating"),
+                "earnings": (it.get("earnings") or {}).get("expected-report-date"),
+            }
+    return out
+
+
+def ivr_label(ivr: float | None, cheap_below: float = 30.0, rich_above: float = 50.0) -> str:
+    if ivr is None:
+        return "n/a"
+    if ivr < cheap_below:
+        return "CHEAP"
+    if ivr >= rich_above:
+        return "rich"
+    return "ok"
+
+
 # ---- CLI ------------------------------------------------------------------
 def _f(x, fmt="{:.1f}", none="-"):
     try:
