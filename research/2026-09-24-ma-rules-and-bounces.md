@@ -129,3 +129,25 @@ recovered by expiry) - regime-flip exit is the better stop; (4) shorter DTE
 does not pass the credit gate at 2.5% width; the lever is heat and stacking,
 not cycle count. Averaging down by ADDING risk beyond budget was not tested
 and should not be: it is the classic premium-seller failure mode.
+
+## Fund techniques on the regime sleeve (`scripts/backtest_stack.py`, 6y, SPY/QQQ/IWM)
+
+| variant | CAGR | max DD | Sharpe |
+|---|---|---|---|
+| buy & hold, equal weight | 13.4% | -29.8% | 0.75 |
+| regime sleeve 1x | 11.3% | -13.0% | 0.91 |
+| regime 1.5x (futures/LEAPS financing at bills+0.5%) | 14.7% | -21.0% | 0.82 |
+| regime 2x | 17.8% | -28.4% | 0.77 |
+| regime 3x | 22.6% | -41.6% | 0.73 |
+| regime vol-targeted 15% / 20% | 10.8% / 12.4% | -21% / -25% | 0.75 / 0.71 |
+| regime 1x + 20% DBMF | 10.2% | -11.8% | 0.92 |
+| DBMF standalone | 4.9% | -29.3% | 0.42 (corr to sleeve +0.30) |
+
+Read: leverage inside the regime filter raises return roughly linearly and
+costs Sharpe slowly (financing + scaled drawdowns); 1.5-2x is the zone where
+the regime-levered sleeve still beats buy-and-hold on both return and
+drawdown. Vol targeting hurt in this sample (it levered the calm run-ups
+before the 2022/2024 dips). Managed futures added little: DBMF's correlation
+to the sleeve was +0.30 here and its own return was weak 2023-26. Every
+"trick" reduces to one of: more risk on the same edge, uncorrelated edges,
+or cost/tax efficiency. Only the first moved the needle in this sample.
