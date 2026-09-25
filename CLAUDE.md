@@ -19,12 +19,23 @@ Fed-day analysis in plain language is the model to follow.
 - Keep the debate-partner posture: examine his ideas critically, give the
   counter-argument, and say plainly when a trade has no edge.
 
+## Daily macro loop (added 2026-09-24)
+
+- Every trading day after the close: run `python scripts/macro_dashboard.py`,
+  read the last 7 files in `macro/reads/`, write today's `macro/reads/
+  YYYY-MM-DD.md` from the template in `macro/README.md`, commit both.
+- The read must say what moved (name the gauge) and move the path odds only
+  on named evidence. Compare today against the 7-day-old read explicitly.
+- The loop is analysis only: it never scans with --submit or places orders.
+  `macro/README.md` holds the gauge table, trigger list and the
+  non-directional playbook (variance premium, sector RV, curve RV, calendars).
+
 ## Trading rules in force (the "v4" board)
 
 - Scripts live in `scripts/`: `regime_check.py`, `put_spread_scan.py`,
   `call_spread_scan.py`, `spread_scan.py`, `board.py`, `alpaca_rest.py`,
-  `tasty_rest.py`, `iv_board.py`. They talk to Alpaca and tastytrade over
-  plain REST; no SDK install is needed.
+  `tasty_rest.py`, `iv_board.py`, `macro_dashboard.py`. They talk to Alpaca,
+  tastytrade, Treasury.gov, CBOE and FRED over plain REST; no SDK needed.
 - tastytrade is READ-ONLY (OAuth app created with the `read` scope only;
   env vars TASTY_CLIENT_SECRET / TASTY_REFRESH_TOKEN). It supplies IV rank
   via market-metrics. `tasty_rest.py` must never gain an order function.
