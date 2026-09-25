@@ -24,11 +24,12 @@ CLUSTERS: dict[str, list[str]] = {
     "energy": ["XOM", "CVX", "XLE"],
     "industrials": ["CAT", "GE", "HON", "XLI"],
     "rates/metals": ["TLT", "GLD", "SLV"],
+    "utilities": ["XLU"],
 }
 
 # Funds have no earnings; skip the lookup entirely for them.
 ETFS = {"QQQ", "SMH", "SPY", "IWM", "DIA", "XLF", "XLV", "XLP", "XLE", "XLI",
-        "TLT", "GLD", "SLV", "XLK", "XLY", "XLU", "XLB", "XLRE", "XLC", "RSP"}
+        "TLT", "GLD", "SLV", "XLK", "XLY", "XLU", "XLB", "XLRE", "XLC", "RSP"}  # XLU is also a board cluster
 
 # Call-side watch: broken/downtrending names for bear call spreads (v4 two-sided).
 CALL_SIDE_WATCH: dict[str, list[str]] = {
