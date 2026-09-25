@@ -121,6 +121,7 @@ def main():
     ap.add_argument("--dte", type=int, default=DTE, help="days to expiry at entry")
     ap.add_argument("--heat", type=float, default=0.15, help="max total max-loss as fraction of equity")
     ap.add_argument("--stage", action="store_true", help="enter half size; add the other half only on a pullback below the 20-DMA while still ABOVE")
+    ap.add_argument("--export", help="write date,overlay_equity to this CSV for the combined test")
     args = ap.parse_args()
     DTE = args.dte
     SLIP, COMM = args.slip, args.comm
@@ -281,7 +282,12 @@ def main():
         print(f"  {kind:<9} n={len(tr):>4} win {wins / len(tr):>4.0%} avg ${st.mean(pnl):>7.0f} "
               f"avg win ${st.mean([p for p in pnl if p > 0] or [0]):>6.0f} avg loss ${st.mean([p for p in pnl if p <= 0] or [0]):>7.0f} "
               f"total ${sum(pnl):>9,.0f} | exits {reasons} | avg hold {st.mean(x[4] for x in tr):.0f}d")
-    cr = [x for x in closed]
+    if args.export:
+        with open(args.export, "w") as f:
+            f.write("date,equity\n")
+            for k, v in enumerate(cash_curve):
+                f.write(f"{dates[n0 + k].isoformat()},{v:.2f}\n")
+        print(f"exported {len(cash_curve)} rows -> {args.export}")
     print(f"\nfinal equity ${cash_curve[-1]:,.0f} from ${args.equity:,.0f}; model options (Black-Scholes, VIX-scaled IV), not historical quotes.")
 
 

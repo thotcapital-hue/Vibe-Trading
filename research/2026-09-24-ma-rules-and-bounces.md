@@ -151,3 +151,26 @@ before the 2022/2024 dips). Managed futures added little: DBMF's correlation
 to the sleeve was +0.30 here and its own return was weak 2023-26. Every
 "trick" reduces to one of: more risk on the same edge, uncorrelated edges,
 or cost/tax efficiency. Only the first moved the needle in this sample.
+
+## Drawdown anatomy, exit/re-entry grid, put entry, combined plan (`scripts/backtest_combined.py`)
+
+Regime sleeve (SPY/QQQ/IWM equal weight, exit on ribbon flip, re-enter on ABOVE), 6y, no switch costs in the grid.
+
+Top drawdowns: 2021-11 -> 2023-03, -13.0%, 336 days, only 21% exposure during the fall
+(= lag + re-entry whipsaw, not the fall itself); 2024-12 -> 2025-03, -11.3%, 96% exposure;
+2024-07 -> 2024-08, -10.2%, 14 days, 100% exposure; 2023-07 -> 2023-10, -9.3%; 2026-01 -> 2026-03, -8.4%.
+Four of the five worst drawdowns happened while fully invested and were too fast (2-10 weeks)
+for a slow regime signal; the one slow one was mostly re-entry cost.
+
+Exit x re-entry grid (selected): regime flip + re-enter on 2 closes > 20-DMA: 11.8% / -13.0% /
+Sharpe 0.95 (free improvement). Close < 20-low band + re-enter on ABOVE: 10.3% / -8.8% / 0.98
+but 151 switches/yr (untradeable after costs). Close < 20-DMA exits: 3-7% CAGR, 54-202 switches/yr.
+2-day drop > 3% exit + re-enter when clear: 13.7% / -27.3% (exits do nothing if re-entry is instant).
+Lesson: tight exits only reduce drawdown when paired with strict re-entry, and the pairing costs
+1-5 points of return plus dozens of switches; the drawdown you avoid is the rally you miss.
+
+Put-based entry (21-DTE ATM short put at each regime entry): CAGR 11.1% vs 11.3%, DD -11.3% vs -13.0%,
+Sharpe 0.92 vs 0.91; 6 assignments, 8 expiries, ~7.9% of sleeve collected as premium over 6y.
+
+Combined plan (overlay = index puts, 30% heat, staged, exported curve on $100k):
+1x + overlay 16.1% / -10.9% / 1.23;  1.5x + overlay 19.0% / -18.0% / 1.05;  2x + overlay 21.5% / -24.7% / 0.94.
