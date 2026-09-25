@@ -101,7 +101,7 @@ def load_vix():
 
 
 def main():
-    global Z, WIDTH, TP, SL, SLIP, COMM, CLOSE_DTE
+    global Z, WIDTH, TP, SL, SLIP, COMM, CLOSE_DTE, DTE
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--years", type=int, default=6)
     ap.add_argument("--no-condor", action="store_true")
@@ -118,7 +118,11 @@ def main():
     ap.add_argument("--puts-only", action="store_true", help="no bear calls in BELOW")
     ap.add_argument("--symbols", nargs="*", help="restrict universe (SPY always fetched for vol scaling)")
     ap.add_argument("--risk", type=float, default=RISK, help="max loss per position as fraction of equity")
+    ap.add_argument("--dte", type=int, default=DTE, help="days to expiry at entry")
+    ap.add_argument("--heat", type=float, default=0.15, help="max total max-loss as fraction of equity")
+    ap.add_argument("--stage", action="store_true", help="enter half size; add the other half only on a pullback below the 20-DMA while still ABOVE")
     args = ap.parse_args()
+    DTE = args.dte
     SLIP, COMM = args.slip, args.comm
     if args.symbols:
         SYMS[:] = sorted(set(s.upper() for s in args.symbols) | {"SPY"})
@@ -171,11 +175,11 @@ def main():
         S_all = {s: data[s]["c"][i] for s in SYMS}
         # ---- manage open positions
         for s in list(open_pos):
-            p = open_pos[s]; S = S_all[s]; T = max(0, (p["exp"] - i)) / 252
-            iv = iv_of(s, i) or p["iv"]
+            p = open_pos[s]; base = s.split("#")[0]; S = S_all[base]; T = max(0, (p["exp"] - i)) / 252
+            iv = iv_of(base, i) or p["iv"]
             val = sum(spread_value(S, T, iv, ks, kl, cp) for ks, kl, cp in p["legs"])  # cost to close per share
             pnl = (p["credit"] - val) * 100 * p["qty"]
-            z = zone(s, i)
+            z = zone(base, i)
             reason = None
             if val <= p["credit"] * (1 - TP): reason = "profit"
             elif val >= p["credit"] * (1 + SL): reason = "stop"
@@ -188,7 +192,16 @@ def main():
         # ---- open new positions
         heat = sum(p["maxloss"] for p in open_pos.values())
         for s in SYMS:
-            if s in open_pos or len(open_pos) >= MAX_POS:
+            second = False
+            if s in open_pos:
+                # staged add: half budget held back; deploy it on a pullback below the 20-DMA close
+                # while the regime is still ABOVE and price holds the 20-low band (better strike, same budget)
+                p0 = open_pos[s]
+                if not (args.stage and p0["kind"] == "bullput" and (s + "#2") not in open_pos and zone(s, i) == "ABOVE"
+                        and S_all[s] < data[s]["c20"][i] and S_all[s] > data[s]["l20"][i]):
+                    continue
+                second = True
+            elif len(open_pos) >= MAX_POS:
                 continue
             z = zone(s, i); iv = iv_of(s, i); S = S_all[s]; d = data[s]
             if z is None or iv is None:
@@ -210,16 +223,20 @@ def main():
             if credit / width < args.gate or credit <= 0:  # credit gate
                 continue
             maxloss_per = (width - credit) * 100
-            qty = int(eq * args.risk // maxloss_per)
-            if qty < 1 or heat + maxloss_per * qty > eq * 0.15:
+            budget = eq * args.risk * (0.5 if (args.stage and kind == "bullput") else 1.0)
+            qty = int(budget // maxloss_per)
+            if qty < 1 or heat + maxloss_per * qty > eq * args.heat:
                 continue
-            open_pos[s] = dict(kind=kind, legs=legs, credit=credit, qty=qty, exp=i + DTE * 252 // 365,
-                               open=i, zone=z if not args.any_regime else zone(s, i), iv=iv, maxloss=maxloss_per * qty)
+            key = s + "#2" if second else s
+            exp_i = open_pos[s]["exp"] if second else i + DTE * 252 // 365
+            open_pos[key] = dict(kind=kind, legs=legs, credit=credit, qty=qty, exp=exp_i,
+                                 open=i, zone=z if not args.any_regime else zone(s, i), iv=iv, maxloss=maxloss_per * qty)
             heat += maxloss_per * qty
         mtm = eq
         for s, p in open_pos.items():
-            T = max(0, (p["exp"] - i)) / 252; iv = iv_of(s, i) or p["iv"]
-            val = sum(spread_value(S_all[s], T, iv, ks, kl, cp) for ks, kl, cp in p["legs"])
+            base = s.split("#")[0]
+            T = max(0, (p["exp"] - i)) / 252; iv = iv_of(base, i) or p["iv"]
+            val = sum(spread_value(S_all[base], T, iv, ks, kl, cp) for ks, kl, cp in p["legs"])
             mtm += (p["credit"] - val) * 100 * p["qty"]
         cash_curve.append(mtm)
 
@@ -246,8 +263,10 @@ def main():
         sharpe = (st.mean(rets) / st.pstdev(rets) * math.sqrt(252)) if st.pstdev(rets) else 0
         return cagr, mdd, sharpe
 
+    combo = [stock_2b[k] + (cash_curve[k] - args.equity) for k in range(len(cash_curve))]
     print(f"{'strategy':<44} {'CAGR':>7} {'max DD':>7} {'Sharpe':>6}")
     for name, curve in (("options overlay on regime (this test)", cash_curve), ("stock: long in ABOVE regime, equal-weight", stock_2b),
+                        ("COMBO: regime stock + options overlay", combo),
                         ("stock: buy & hold equal-weight basket", bh)):
         c, m, sh = stats(curve)
         print(f"{name:<44} {c:>7.1%} {m:>7.1%} {sh:>6.2f}")

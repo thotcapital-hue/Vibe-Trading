@@ -52,3 +52,13 @@ Fed-day analysis in plain language is the model to follow.
   tastytrade IV rank is below 30 (`--min-iv-rank`, override only with
   `--allow-low-ivr`). Rank >= 50 is "rich" and is where scans start.
   `python scripts/iv_board.py` is the morning view sorted by IV rank.
+- Ribbon regime gate (added 2026-09-24, from research/2026-09-24-*.md):
+  bull puts only when the 20-day LOW band is fully above the 200-day HIGH
+  band and price is above the 20-low band; bear calls only in the mirror.
+  Override only with `--allow-regime-off`.
+- Management (changed 2026-09-24): HOLD TO EXPIRY. No 21-DTE close. Exit
+  early only if the spread trades at 3x credit (loss 2x) or the regime flips.
+- Concentration (added 2026-09-24): put-selling on SPY/QQQ/IWM
+  (`board.INDEX_CORE`). Single names are chart context; sell puts on one only
+  when IV rank >= 50 (or `--allow-single-name`). Bear calls in BELOW lost
+  money in the 6-year model; treat them as optional, half size.

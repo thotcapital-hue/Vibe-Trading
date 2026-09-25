@@ -102,3 +102,30 @@ Findings
 4. Bear calls in the BELOW regime lost money in every costed run (-$87k to -$150k) in this mostly-bull sample; condors in OVERLAP lost badly (22% win, forced regime exits). Puts-only in ABOVE is the edge.
 5. Regime gating raises quality (Sharpe 1.44 vs 1.16, win 93% vs 88%) but cuts opportunity; sizing must rise to compensate (5% risk per index trade, 15% heat).
 6. Best risk-adjusted: index puts-only, hold to expiry, Sharpe 1.44 at -2.7% DD, vs stock Sharpe 0.75-1.19 at -15 to -30% DD. Absolute return is lower than stock; as an overlay on T-bill collateral (~4%) total ~8-9% at ~3% DD.
+
+## Scaling the index overlay ("juice") and staged entry
+
+SPY/QQQ/IWM, puts only, ABOVE regime, 1 SD, 2.5% width, 35 DTE, hold to expiry, costs 5% of credit.
+
+| variant | overlay CAGR | overlay DD | Sharpe | COMBO (regime stock + overlay) CAGR / DD |
+|---|---|---|---|---|
+| 5% risk/trade, 15% heat | 4.5% | -2.7% | 1.44 | 13.7% / -14.1% |
+| 10% risk, 30% heat | 9.1% | -5.3% | 1.44 | 16.9% / -12.7% |
+| 15% risk, 45% heat | 13.8% | -8.0% | 1.45 | 20.4% / -11.6% |
+| 15% risk, 45% heat, STAGED (half at signal, half on pullback below 20-DMA while ABOVE) | 12.0% | -5.1% | 1.84 | 19.0% / -11.8% |
+| 45% heat with 2x-credit stop | 10.6% | -7.0% | 1.26 | 18.0% / -14.9% |
+| 45% heat, staged, with stop | 10.1% | -5.1% | 1.66 | 17.6% / -13.6% |
+| 21 / 14 / 7 DTE at the same width | ~0 (gate rarely passes) | | | |
+| buy & hold the 3 indices | 13.5% | -29.9% | 0.75 | |
+
+Findings: (1) return scales linearly with heat while Sharpe holds ~1.45 in
+this sample: the regime filter kept the book flat through 2022; the
+unmodelled risk is a crash that starts from ABOVE (Feb-2020 type, not in
+window) where 45% heat can lose most of itself; (2) staged entry (DCA within
+a fixed budget) cuts drawdown by a third for ~2 points of return and lifts
+Sharpe to 1.84, win 96%: the second tranche gets a lower strike and more
+premium; (3) a 2x-credit stop HURTS here (locks in losses on dips that
+recovered by expiry) - regime-flip exit is the better stop; (4) shorter DTE
+does not pass the credit gate at 2.5% width; the lever is heat and stacking,
+not cycle count. Averaging down by ADDING risk beyond budget was not tested
+and should not be: it is the classic premium-seller failure mode.

@@ -27,6 +27,11 @@ CLUSTERS: dict[str, list[str]] = {
     "utilities": ["XLU"],
 }
 
+# Premium selling is concentrated here (penny-wide markets, fixed costs ~5% of
+# credit in the model). Single names are chart context unless their IV rank
+# is high enough that the credit dwarfs the fixed cost (see spread_scan).
+INDEX_CORE = {"SPY", "QQQ", "IWM"}
+
 # Funds have no earnings; skip the lookup entirely for them.
 ETFS = {"QQQ", "SMH", "SPY", "IWM", "DIA", "XLF", "XLV", "XLP", "XLE", "XLI",
         "TLT", "GLD", "SLV", "XLK", "XLY", "XLU", "XLB", "XLRE", "XLC", "RSP"}  # XLU is also a board cluster

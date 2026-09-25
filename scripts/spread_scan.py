@@ -13,8 +13,13 @@ width), IV-rank floor (tastytrade market metrics; default 30 — do not sell
 premium that is cheap for the name), open-interest floor per leg, earnings
 inside the trade excluded, portfolio-heat cap and one-position-per-cluster
 enforced on --submit.
-Sizing = floor(equity * risk% * conviction / max loss). Management: take
-profit at 50% of credit, hard close at 21 DTE.
+Sizing = floor(equity * risk% * conviction / max loss). Management (per the
+2026-09-24 research note): HOLD TO EXPIRY; exit early only if the spread's
+value reaches 3x the credit (loss = 2x credit) or the ribbon regime flips.
+Eligibility: the 20-day LOW band must sit fully above the 200-day HIGH band
+(bull put) or the 20-day HIGH band fully below the 200-day LOW band (bear
+call). Put-selling is concentrated on SPY/QQQ/IWM; single names need IV rank
+>= 50 (or --allow-single-name).
 
 Data: Alpaca options snapshots (Greeks/IV/NBBO, OPRA with indicative
 fallback); OI from the trading API contracts endpoint. Orders are one
@@ -41,7 +46,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from alpaca_rest import APIError, AlpacaREST
-from board import ETFS, cluster_of, next_earnings, parse_occ, portfolio_heat, print_heat
+from board import ETFS, INDEX_CORE, cluster_of, next_earnings, parse_occ, portfolio_heat, print_heat
 from tasty_rest import iv_metrics, ivr_label, tasty_available
 
 RISK_FREE_RATE = 0.04
@@ -260,6 +265,23 @@ def build_candidates(
     return candidates
 
 
+def ribbon_regime(client: AlpacaREST, symbol: str) -> tuple[str, dict]:
+    """ABOVE / BELOW / OVERLAP from the 20- and 200-day HIGH/LOW ribbons (split-adjusted daily bars)."""
+    bars = client.bars([symbol], datetime.now(timezone.utc) - timedelta(days=330), "1Day").get(symbol) or []
+    if len(bars) < 200:
+        return "n/a", {}
+    h = [float(b["h"]) for b in bars]; lo = [float(b["l"]) for b in bars]; c = [float(b["c"]) for b in bars]
+    m = lambda x, n: sum(x[-n:]) / n  # noqa: E731
+    info = dict(close=c[-1], h20=m(h, 20), l20=m(lo, 20), h200=m(h, 200), l200=m(lo, 200))
+    if info["l20"] > info["h200"]:
+        z = "ABOVE"
+    elif info["h20"] < info["l200"]:
+        z = "BELOW"
+    else:
+        z = "OVERLAP"
+    return z, info
+
+
 def size_position(equity: float, risk_pct: float, conviction: float, max_loss: float) -> int:
     if max_loss <= 0:
         return 0
@@ -310,6 +332,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--min-iv-rank", type=float, default=30.0, help="refuse to sell premium below this IV rank (0-100)")
     ap.add_argument("--allow-low-ivr", action="store_true", help="submit even when IV rank is below --min-iv-rank")
     ap.add_argument("--no-ivr", action="store_true", help="skip the tastytrade IV-rank lookup")
+    ap.add_argument("--allow-regime-off", action="store_true", help="submit even if the ribbon regime is not eligible")
+    ap.add_argument("--allow-single-name", action="store_true", help="put side: submit a non-index name with IV rank < 50")
     return ap
 
 
@@ -339,6 +363,20 @@ def main(argv: list[str] | None = None) -> None:
     thesis_off = spot <= args.level if side == "put" else spot >= args.level
     if thesis_off:
         print(f"[warn] spot is on the wrong side of {cfg['level']} — {cfg['thesis']}-{args.level:g} thesis not active")
+
+    # ---- ribbon regime (20/200 high-low bands) ----------------------------
+    regime, rb = ribbon_regime(client, symbol)
+    need = "ABOVE" if side == "put" else "BELOW"
+    regime_ok = regime == need and (
+        (side == "put" and rb.get("close", 0) > rb.get("l20", 0)) or
+        (side == "call" and rb.get("close", 0) < rb.get("h20", float("inf")))
+    )
+    if rb:
+        print(f"ribbon regime: {regime}  (20-band {rb['l20']:.2f}-{rb['h20']:.2f}, 200-band {rb['l200']:.2f}-{rb['h200']:.2f}, close {rb['close']:.2f})"
+              f"  -> {'eligible' if regime_ok else 'NOT eligible for ' + side + ' spreads'}")
+    else:
+        print("[warn] ribbon regime unavailable (not enough daily bars)")
+    single_name_block = side == "put" and symbol not in INDEX_CORE
 
     # ---- earnings ---------------------------------------------------------
     earnings: date | None = None
@@ -463,7 +501,8 @@ def main(argv: list[str] | None = None) -> None:
         f"{label} credit spread x{qty} @ {credit:.2f} credit "
         f"(max loss {pick.max_loss * 100 * max(qty, 1):,.0f} on {max(qty, 1)} lots)"
     )
-    print(f"management: take profit at {credit / 2:.2f} debit (50%), hard close at 21 DTE")
+    print(f"management: hold to expiry; exit early only if the spread trades at {credit * 3:.2f} (3x credit, loss 2x) "
+          f"or the ribbon regime leaves {need}")
     new_risk = pick.max_loss * 100 * qty
     heat_after = heat + new_risk
     heat_after_pct = heat_after / equity * 100 if heat_after != float("inf") else float("inf")
@@ -473,6 +512,11 @@ def main(argv: list[str] | None = None) -> None:
               "— v4 says WALK (or wait for a red day / vol pop)")
     if pick.call_lean:
         print(f"[skew] 25Δ skew {pick.skew:+.1f} vol is CALL-LEAN — v4 says skip bear calls (squeeze risk)")
+    if not regime_ok:
+        print(f"[regime] ribbon regime is {regime}, {side} spreads need {need} with price on the right side of the 20-band — WAIT")
+    if single_name_block and (ivr is None or ivr < 50):
+        print(f"[core] {symbol} is not in the index core {sorted(INDEX_CORE)} and IV rank is {'n/a' if ivr is None else f'{ivr:.1f}'} < 50 — "
+              "single-name puts only when premium is rich")
     low_ivr = ivr is not None and ivr < args.min_iv_rank
     if low_ivr:
         print(f"[ivr] IV rank {ivr:.0f} < {args.min_iv_rank:.0f} — premium is CHEAP for this name; "
@@ -491,6 +535,10 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit("call-lean skew; refusing bear call spread without --allow-call-lean")
     if low_ivr and not args.allow_low_ivr:
         sys.exit(f"IV rank {ivr:.0f} below {args.min_iv_rank:.0f}; refusing to sell cheap premium without --allow-low-ivr")
+    if not regime_ok and not args.allow_regime_off:
+        sys.exit(f"ribbon regime {regime} is not eligible for {side} spreads; refusing without --allow-regime-off")
+    if single_name_block and (ivr is None or ivr < 50) and not args.allow_single_name:
+        sys.exit(f"{symbol} is a single name with IV rank below 50; put-selling is concentrated on {sorted(INDEX_CORE)} — refusing without --allow-single-name")
     if heat_after_pct > args.max_heat:
         sys.exit(f"heat cap: entry would put {heat_after_pct:.1f}% of equity at risk (> {args.max_heat:.0f}%); refusing")
     if cluster and cluster in occupied and not args.allow_cluster_dup:
