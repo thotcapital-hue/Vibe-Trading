@@ -42,6 +42,18 @@ Fed-day analysis in plain language is the model to follow.
 - Trading is PAPER only via `paper-api.alpaca.markets`. Never touch the live
   endpoint. Sanjay's real account is at Fidelity; only advise on it, never
   act on it.
+- PAPER TRADING RESUMED 2026-09-25 with the "new plan" (research note
+  2026-09-24): bull put spreads on SPY/QQQ/IWM only, ribbon regime ABOVE,
+  IV rank >= 30, 1-SD short strike, 35-45 DTE, `--risk-pct 10 --max-heat 30
+  --conviction full --stage` (10% max loss per index, 30% heat, half size at
+  the signal and half on a pullback below the 20-DMA). Hold to expiry; exit
+  only on a regime flip or at 3x credit. Index-core credit gate is 12%
+  (`--credit-gate 0.12`, the value the model was tested with; costs on index
+  options are ~5% of credit); single names keep 15%. The CAUTION half-size
+  multiplier does not apply to index-core puts (the ribbon gate, IV-rank floor
+  and heat cap replace it); RED still blocks. A weekday 3:30 PM ET routine
+  runs the scans and may submit ONLY these three names on the put side with
+  exactly these flags; every fill is appended to `macro/paper_log.md`.
 - Regime gate: GREEN full size, CAUTION half, RED no new put spreads (bear
   call spreads on broken names only).
 - Credit gate: mid credit must be at least 15% of spread width. Short strike

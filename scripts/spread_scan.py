@@ -272,7 +272,7 @@ def ribbon_regime(client: AlpacaREST, symbol: str) -> tuple[str, dict]:
         return "n/a", {}
     h = [float(b["h"]) for b in bars]; lo = [float(b["l"]) for b in bars]; c = [float(b["c"]) for b in bars]
     m = lambda x, n: sum(x[-n:]) / n  # noqa: E731
-    info = dict(close=c[-1], h20=m(h, 20), l20=m(lo, 20), h200=m(h, 200), l200=m(lo, 200))
+    info = dict(close=c[-1], h20=m(h, 20), l20=m(lo, 20), h200=m(h, 200), l200=m(lo, 200), c20=m(c, 20))
     if info["l20"] > info["h200"]:
         z = "ABOVE"
     elif info["h20"] < info["l200"]:
@@ -334,6 +334,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-ivr", action="store_true", help="skip the tastytrade IV-rank lookup")
     ap.add_argument("--allow-regime-off", action="store_true", help="submit even if the ribbon regime is not eligible")
     ap.add_argument("--allow-single-name", action="store_true", help="put side: submit a non-index name with IV rank < 50")
+    ap.add_argument("--stage", action="store_true",
+                    help="staged entry: first tranche is half size; a second tranche on the same underlying is allowed only "
+                         "on a pullback below the 20-DMA while price holds the 20-low band and the regime is still eligible")
     return ap
 
 
@@ -425,10 +428,23 @@ def main(argv: list[str] | None = None) -> None:
         print(f"[warn] could not read open positions: {exc}")
         book = []
     heat = print_heat(book, equity, args.max_heat)
-    cluster = cluster_of(symbol)
-    occupied = {sp.cluster for sp in book if sp.cluster}
-    if cluster and cluster in occupied:
+    cluster = symbol if symbol in INDEX_CORE else cluster_of(symbol)  # core indices are their own cluster
+    occupied = {(sp.underlying if sp.underlying in INDEX_CORE else sp.cluster) for sp in book if sp.cluster or sp.underlying in INDEX_CORE}
+    same_name = [sp for sp in book if sp.underlying == symbol and sp.kind == side]
+    if cluster and cluster in occupied and not same_name:
         print(f"[cluster] {cluster} already has an open position — new entry needs --allow-cluster-dup")
+    # ---- staged entry state ----------------------------------------------
+    tranche = 1
+    if args.stage:
+        if same_name:
+            tranche = 2
+            pullback = bool(rb) and rb["close"] < rb["c20"] and rb["close"] > rb["l20"]
+            print(f"[stage] {len(same_name)} open {side} spread(s) on {symbol}: second tranche "
+                  f"{'ALLOWED (pullback below 20-DMA, above 20-low band)' if pullback else 'waits for a pullback below the 20-DMA'}")
+            if len(same_name) >= 2:
+                print("[stage] both tranches already on — no further entry")
+        else:
+            print("[stage] first tranche: half size")
 
     # ---- chain ------------------------------------------------------------
     chain = fetch_chain(client, symbol, exp_gte, exp_lte, args.feed)
@@ -494,6 +510,8 @@ def main(argv: list[str] | None = None) -> None:
         pick = candidates[0]
 
     qty = size_position(equity, args.risk_pct, conviction, pick.max_loss)
+    if args.stage:
+        qty = max(qty // 2, 1) if qty >= 1 else 0
     credit = args.limit if args.limit is not None else round(pick.credit_mid, 2)
     label = "bull put" if side == "put" else "bear call"
     print(
@@ -541,7 +559,12 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(f"{symbol} is a single name with IV rank below 50; put-selling is concentrated on {sorted(INDEX_CORE)} — refusing without --allow-single-name")
     if heat_after_pct > args.max_heat:
         sys.exit(f"heat cap: entry would put {heat_after_pct:.1f}% of equity at risk (> {args.max_heat:.0f}%); refusing")
-    if cluster and cluster in occupied and not args.allow_cluster_dup:
+    if args.stage and tranche == 2:
+        if len(same_name) >= 2:
+            sys.exit("staged: both tranches already on; refusing a third")
+        if not (rb and rb["close"] < rb["c20"] and rb["close"] > rb["l20"]):
+            sys.exit("staged: second tranche requires a pullback below the 20-DMA with price above the 20-low band; refusing")
+    if cluster and cluster in occupied and not same_name and not args.allow_cluster_dup:
         sys.exit(f"cluster cap: {cluster} already occupied; pass --allow-cluster-dup to override")
     order = submit_paper_order(client, pick, qty, credit)
     print(f"\nPAPER order submitted: id={order['id']} status={order['status']}")
