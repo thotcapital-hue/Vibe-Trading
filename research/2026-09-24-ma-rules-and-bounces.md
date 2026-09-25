@@ -48,3 +48,26 @@ in downtrends (shorts) loses in every variant.
 Use: the touch of a daily average is a LOCATION for placing a defined-risk
 options structure (short strike beyond the line, in the trend's direction),
 not a stand-alone directional trade.
+
+## Addendum: does a "decisive" close past the 200-DMA help? (`scripts/backtest_confirm.py`)
+
+Daily, 6y, 20 names, long when above the 200-DMA, exit mirrored:
+
+| confirmation | avg CAGR | avg MDD | trades/yr | win | beat B&H |
+|---|---|---|---|---|---|
+| 1 close beyond (baseline) | 12.5% | -32.5% | 4.5 | 40% | 3/20 |
+| 5 consecutive closes | 13.3% | -31.7% | 1.4 | 49% | 3/20 |
+| 1 close 2% beyond | 12.8% | -31.4% | 1.5 | 45% | 3/20 |
+| 3 closes 2% beyond | 13.0% | -31.6% | 1.1 | 53% | 1/20 |
+
+Hourly closes vs the daily 200-DMA, 2y, 10 names: daily-close baseline 8.8%
+CAGR, 4.6 trades/yr; first hourly close 9.1% / 7.8 trades/yr; decisive 0.3%
+hourly close 8.8% / 4.8; two consecutive hourly closes 10.0% / 5.2 (best,
+within noise). None beat buy-and-hold (0/10).
+
+Conclusion: confirmation cuts whipsaws by 60–75% and lifts the win rate from
+~40% to ~50%, but returns are unchanged (12.2–13.3% across the whole grid)
+because the later entry gives back what the avoided whipsaws save. Use
+confirmation to reduce trade count and false entries, not to add return.
+Two consecutive closes (daily or hourly) is a reasonable default; margins
+beyond 0.5% add nothing.
