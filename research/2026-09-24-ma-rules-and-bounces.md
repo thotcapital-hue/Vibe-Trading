@@ -71,3 +71,34 @@ because the later entry gives back what the avoided whipsaws save. Use
 confirmation to reduce trade count and false entries, not to add return.
 Two consecutive closes (daily or hourly) is a reasonable default; margins
 beyond 0.5% add nothing.
+
+## Options overlay on the ribbon regime (`scripts/backtest_options_regime.py`)
+
+Model options (Black-Scholes; IV = VIX x stock-RV/SPY-RV, put skew +0.20/ln(S/K)).
+6 years, daily marks, 35 DTE, short strike 1 SD below spot, width 2.5% of spot,
+entry only when the 20-day LOW band > 200-day HIGH band and close > 20-low band,
+exit on 50% profit / 2x-credit stop / regime change (and 21 DTE where noted).
+NOT historical quotes: indicative only.
+
+| variant | CAGR | max DD | Sharpe | trades/yr | win | costs/credit |
+|---|---|---|---|---|---|---|
+| all 20 names, puts+calls+condors, 21-DTE close, $100k | -14.3% | -60% | -4.1 | 251 | 54/60/22% | ~40% |
+| all names, no condors, NO costs | +6.2% | -3.0% | 1.75 | 249 | 81% | 0 |
+| all names, hold to expiry, NO costs | +9.0% | -5.5% | 1.87 | 118 | 92% | 0 |
+| all names, puts only, realistic costs, no 21-DTE churn, 1% risk | +3.1% | -4.4% | 0.83 | 164 | 82% | 24% |
+| all names, puts only, 2% risk | +5.6% | -8.6% | 0.86 | 147 | 82% | 22% |
+| SPY/QQQ/IWM only, puts only, 1% risk | +0.7% | -0.5% | 1.27 | 13 | 94% | 5% |
+| **SPY/QQQ/IWM, puts only, hold to expiry, 5% risk (15% heat)** | **+4.5%** | **-2.7%** | **1.44** | 7 | 93% | 5% |
+| same, 50% take-profit instead of expiry | +3.8% | -2.4% | 1.27 | 13 | 94% | 5% |
+| SPY/QQQ/IWM, puts only, regime IGNORED (control) | +1.4% | -1.2% | 1.16 | 34 | 88% | 5% |
+| 7 ETFs, puts only, 3% risk | +3.6% | -3.0% | 1.00 | 36 | 89% | 19% |
+| stock: long in ABOVE regime, equal weight (20 names / 3 indices) | 18.2% / 10.8% | -14.5% / -15.7% | 1.19 / 0.87 | | | |
+| stock: buy & hold (20 names / 3 indices) | 24.3% / 13.5% | -29.1% / -29.9% | 1.15 / 0.75 | | | |
+
+Findings
+1. The gross edge exists (variance risk premium + regime filter): +6-9%/yr with 3-5% drawdown before costs.
+2. Fixed costs decide everything. At 1-SD strikes the credit is ~12-15% of width, so $0.10 slippage + $2.60 commission per spread eats 25-45% of it on single names and turns the edge negative. On SPY/QQQ/IWM with penny markets costs are ~5% of credit and the edge survives.
+3. Trade count is the other lever: the "close at 21 DTE" rule churns ~250 trades/yr and loses; holding to expiry (exit only on regime change or stop) is best.
+4. Bear calls in the BELOW regime lost money in every costed run (-$87k to -$150k) in this mostly-bull sample; condors in OVERLAP lost badly (22% win, forced regime exits). Puts-only in ABOVE is the edge.
+5. Regime gating raises quality (Sharpe 1.44 vs 1.16, win 93% vs 88%) but cuts opportunity; sizing must rise to compensate (5% risk per index trade, 15% heat).
+6. Best risk-adjusted: index puts-only, hold to expiry, Sharpe 1.44 at -2.7% DD, vs stock Sharpe 0.75-1.19 at -15 to -30% DD. Absolute return is lower than stock; as an overlay on T-bill collateral (~4%) total ~8-9% at ~3% DD.
