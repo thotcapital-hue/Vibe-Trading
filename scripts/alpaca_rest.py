@@ -82,9 +82,16 @@ class AlpacaREST:
         d = self._request("GET", f"{DATA_URL}/v2/stocks/{symbol}/trades/latest", {"feed": feed})
         return float(d["trade"]["p"]), d["trade"]["t"]
 
-    def daily_closes(self, symbols: list[str], start: datetime, feed: str = "sip") -> dict[str, list[float]]:
-        """symbol -> ascending list of daily closes since ``start``."""
-        params = {"symbols": ",".join(symbols), "timeframe": "1Day", "start": start, "feed": feed, "sort": "asc"}
+    def daily_closes(self, symbols: list[str], start: datetime, feed: str = "sip",
+                     adjustment: str = "split") -> dict[str, list[float]]:
+        """symbol -> ascending list of daily closes since ``start``.
+
+        ``adjustment="split"`` (default) back-adjusts for stock splits so moving
+        averages and returns are continuous across a split date; "raw" gives
+        the prices as traded; "all" also adjusts for dividends.
+        """
+        params = {"symbols": ",".join(symbols), "timeframe": "1Day", "start": start, "feed": feed,
+                  "sort": "asc", "adjustment": adjustment}
         closes: dict[str, list[float]] = {}
         for bars in self._paged(f"{DATA_URL}/v2/stocks/bars", params, "bars", 10000):
             for sym, blist in (bars or {}).items():
