@@ -74,3 +74,12 @@ Fed-day analysis in plain language is the model to follow.
   (`board.INDEX_CORE`). Single names are chart context; sell puts on one only
   when IV rank >= 50 (or `--allow-single-name`). Bear calls in BELOW lost
   money in the 6-year model; treat them as optional, half size.
+
+## External strategy reviews
+
+- Strategies Sanjay brings in from other assistants go under `research/external/`
+  and get an independent re-test before any comment. First one: Grok's QLD
+  trend sleeve (`research/2026-09-25-grok-qld-sleeve-review.md`,
+  `scripts/backtest_qld_sleeve.py`, Yahoo data cached in `research/data/`).
+  Its numbers reproduced exactly; verdict: same 200-DMA trend idea as ours at
+  2x leverage, 46% worst loss, tranche clock is the only real risk control.
