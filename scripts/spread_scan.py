@@ -46,7 +46,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from alpaca_rest import APIError, AlpacaREST
-from board import ETFS, INDEX_CORE, cluster_of, next_earnings, parse_occ, portfolio_heat, print_heat
+from board import ETFS, INDEX_CORE, SECTOR_CORE, cluster_of, next_earnings, parse_occ, portfolio_heat, print_heat
 from tasty_rest import iv_metrics, ivr_label, tasty_available
 
 RISK_FREE_RATE = 0.04
@@ -379,7 +379,7 @@ def main(argv: list[str] | None = None) -> None:
               f"  -> {'eligible' if regime_ok else 'NOT eligible for ' + side + ' spreads'}")
     else:
         print("[warn] ribbon regime unavailable (not enough daily bars)")
-    single_name_block = side == "put" and symbol not in INDEX_CORE
+    single_name_block = side == "put" and symbol not in INDEX_CORE and symbol not in SECTOR_CORE
 
     # ---- earnings ---------------------------------------------------------
     earnings: date | None = None
@@ -533,7 +533,7 @@ def main(argv: list[str] | None = None) -> None:
     if not regime_ok:
         print(f"[regime] ribbon regime is {regime}, {side} spreads need {need} with price on the right side of the 20-band — WAIT")
     if single_name_block and (ivr is None or ivr < 50):
-        print(f"[core] {symbol} is not in the index core {sorted(INDEX_CORE)} and IV rank is {'n/a' if ivr is None else f'{ivr:.1f}'} < 50 — "
+        print(f"[core] {symbol} is not in the index core {sorted(INDEX_CORE)} or sector core {sorted(SECTOR_CORE)} and IV rank is {'n/a' if ivr is None else f'{ivr:.1f}'} < 50 — "
               "single-name puts only when premium is rich")
     low_ivr = ivr is not None and ivr < args.min_iv_rank
     if low_ivr:

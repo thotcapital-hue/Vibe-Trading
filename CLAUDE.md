@@ -70,6 +70,15 @@ Fed-day analysis in plain language is the model to follow.
   Override only with `--allow-regime-off`.
 - Management (changed 2026-09-24): HOLD TO EXPIRY. No 21-DTE close. Exit
   early only if the spread trades at 3x credit (loss 2x) or the regime flips.
+- Sector core (added 2026-09-25): XLU and XLV are `board.SECTOR_CORE`. They are
+  scanned like the index core (no IV-rank-50 single-name block) but keep the 15%
+  credit gate and their own clusters; manual submit only, the routine still
+  submits only SPY/QQQ/IWM. Reason: research/2026-09-25-sectors-in-high-rate-
+  regimes.md (utilities and health care had the best hit rates with the 10y over
+  5% and rising). Scan sector funds during market hours: after the close OPRA
+  bids are zero and the scanner reports "no positive credit".
+- Alpaca is plain REST (stateless HTTPS requests); nothing stays connected and
+  there is no websocket, so the one-stream limit is never used by these scripts.
 - Concentration (added 2026-09-24): put-selling on SPY/QQQ/IWM
   (`board.INDEX_CORE`). Single names are chart context; sell puts on one only
   when IV rank >= 50 (or `--allow-single-name`). Bear calls in BELOW lost

@@ -32,6 +32,13 @@ CLUSTERS: dict[str, list[str]] = {
 # is high enough that the credit dwarfs the fixed cost (see spread_scan).
 INDEX_CORE = {"SPY", "QQQ", "IWM"}
 
+# Sector core (added 2026-09-25 from research/2026-09-25-sectors-in-high-rate-regimes.md):
+# utilities and health care had the best hit rates while the 10y was over 5% and
+# still rising. Scanned like the index core (no IV-rank-50 single-name block) but
+# they keep the 15% credit gate (wider markets than SPY/QQQ) and their own cluster.
+# Manual submit only: the 3:30 PM routine may still submit only INDEX_CORE.
+SECTOR_CORE = {"XLU", "XLV"}
+
 # Funds have no earnings; skip the lookup entirely for them.
 ETFS = {"QQQ", "SMH", "SPY", "IWM", "DIA", "XLF", "XLV", "XLP", "XLE", "XLI",
         "TLT", "GLD", "SLV", "XLK", "XLY", "XLU", "XLB", "XLRE", "XLC", "RSP"}  # XLU is also a board cluster
