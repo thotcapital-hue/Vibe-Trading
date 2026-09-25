@@ -122,6 +122,7 @@ def main():
     ap.add_argument("--heat", type=float, default=0.15, help="max total max-loss as fraction of equity")
     ap.add_argument("--stage", action="store_true", help="enter half size; add the other half only on a pullback below the 20-DMA while still ABOVE")
     ap.add_argument("--export", help="write date,overlay_equity to this CSV for the combined test")
+    ap.add_argument("--yahoo", action="store_true", help="use Yahoo bars cached in research/data/ (long history) instead of Alpaca")
     args = ap.parse_args()
     DTE = args.dte
     SLIP, COMM = args.slip, args.comm
@@ -130,8 +131,17 @@ def main():
     Z, WIDTH, TP, SL = args.z, args.width, args.tp, args.sl
     if args.no_costs: SLIP, COMM = 0.0, 0.0
     if args.no_21dte: CLOSE_DTE = 0
-    cli = AlpacaREST(*load_keys())
-    bars = cli.bars(SYMS, datetime.now(timezone.utc) - timedelta(days=365 * args.years + 320), "1Day")
+    since = datetime.now(timezone.utc) - timedelta(days=365 * args.years + 320)
+    if args.yahoo:
+        # Yahoo split-adjusted (not dividend-adjusted) daily bars cached in research/data/
+        from backtest_qld_sleeve import load as yload
+        bars = {}
+        for s in SYMS:
+            bars[s] = [dict(t=r[0].isoformat(), h=r[1], l=r[2], c=r[3]) for r in yload(s, False)
+                       if r[0] >= since.date()]
+    else:
+        cli = AlpacaREST(*load_keys())
+        bars = cli.bars(SYMS, since, "1Day")
     vix = load_vix()
 
     # align on SPY's calendar

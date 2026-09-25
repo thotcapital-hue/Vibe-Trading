@@ -1,5 +1,13 @@
 # Strategy ledger (as of 2026-09-25)
 
+> **Update, same day, after ledger tests 1-3** (`research/2026-09-25-batch-mix-leverage.md`):
+> all rows are now reconciled on Yahoo total-return data. Corrections: the 6y overlay at
+> 10% risk / 30% heat is 7.3%, not 9.1% (row C5); the "regime sleeve 1x" 11.3% (A5/B1)
+> becomes 15.1% on total return with the same rule; over 19 years the sleeve earns 10-12%
+> at 1x and 14-17% at 1.5x, the overlay adds 0.5 points (not 2-5), and no leverage setting
+> reaches 20% CAGR under a 25% worst loss. IWM is a drag in every test; SPY+QQQ is the
+> recommended sleeve. Sections A-F below keep the original numbers for the record.
+
 Every strategy tested in this repository so far, with its returns, on as
 common a footing as the tests allow. Sources: `research/2026-09-24-ma-rules-
 and-bounces.md`, `research/2026-09-25-grok-qld-sleeve-review.md`, and a
@@ -128,7 +136,7 @@ of 38% or more. Any plan sized on 6y numbers should be stress-sized on these.
 5. The live paper board is testing C5-staged in real quotes. Nothing has
    passed the 12% credit gate yet.
 
-## Test next, in order
+## Test next, in order (items 1-3 done; see the batch note for the next set)
 
 1. Reconcile data: rerun A5/B1/D1 on Yahoo total-return data so every row in
    this ledger is on one footing (the 11.3% vs 15.1% gap is dividends plus the
