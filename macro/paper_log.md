@@ -11,3 +11,4 @@ One line per event, newest last. Format:
 2026-09-28 | SPY | scan, no trade | bull put 733/728 Oct 30 | - | 0.54 (10.8%) | - | ABOVE, IVR 36; below 12% gate
 2026-09-28 | XLV | scan, no trade | bull put 160/158 Nov 6 | - | mid 0.34 (17%) but natural 0.00, no OI, indicative feed empty | - | no real market at 1-SD strikes; sector-fund puts too illiquid, do not trade
 2026-09-28 | ROUTINE | diagnostic | fresh-session dry run reached step 5 | - | - | - | testing why the 3:30 PM run left no journal line
+2026-09-28 | QQQ | submitted, unfilled, cancelled | bull put 694/689 Oct 30, first tranche x10, order e30e7d75 | 10 | 0.60 (12.0%) | 4,400 | passed all gates at 4:01 PM ET (after the 4:00 stock close); no fill by the 4:15 options close; cancelled to keep the book clean. Routine at 3:34 PM did nothing: its session had no repo attached; prompt patched to clone first
