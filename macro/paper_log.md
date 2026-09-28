@@ -10,3 +10,4 @@ One line per event, newest last. Format:
 2026-09-28 | QQQ | scan, no trade | bull put 691/686 Oct 30, first tranche x10 | 10 | @ 0.59 credit | 4,405 | ABOVE, IVR 48; mid credit oscillated 11.9-12.1% around the 12% gate; routine retries 3:30 PM
 2026-09-28 | SPY | scan, no trade | bull put 733/728 Oct 30 | - | 0.54 (10.8%) | - | ABOVE, IVR 36; below 12% gate
 2026-09-28 | XLV | scan, no trade | bull put 160/158 Nov 6 | - | mid 0.34 (17%) but natural 0.00, no OI, indicative feed empty | - | no real market at 1-SD strikes; sector-fund puts too illiquid, do not trade
+2026-09-28 | ROUTINE | diagnostic | fresh-session dry run reached step 5 | - | - | - | testing why the 3:30 PM run left no journal line
