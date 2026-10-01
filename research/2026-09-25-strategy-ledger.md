@@ -152,3 +152,17 @@ of 38% or more. Any plan sized on 6y numbers should be stress-sized on these.
    above the 20-DMA (A6) and the put-based entry (C10).
 6. Real options quotes: log the daily 1-SD SPY/QQQ credits from Alpaca for a
    month and compare to the model's 12-15% of width, to validate C5.
+
+## Queue additions (2026-10-01)
+
+7. **13F consensus from EDGAR** (`scripts/edgar_13f.py`, managers in
+   `research/13f_managers.json`). Built and self-tested; blocked only on the SEC
+   User-Agent setting (see CLAUDE.md). Once it runs: (a) confirm each manager's CIK,
+   (b) write the consensus and quarter-over-quarter adds/exits, (c) check why the
+   newest Pershing filing on EDGAR is the Q1 (May 15) one while web sources describe
+   a Q2 (Aug 14) one, (d) backtest "hold the top-N consensus names, rebalanced 47 days
+   after each quarter end" against SPY on Yahoo data, with GVIP as the public
+   benchmark, over every quarter available. Verdict rule: only counts if it beats
+   SPY after the lag with a Sharpe above the index, otherwise it is a watchlist only.
+8. **Weekly forecast scorecard**: log any service's weekly call, grade it against the
+   outcome and the options-implied range, keep a running hit rate versus 50%.

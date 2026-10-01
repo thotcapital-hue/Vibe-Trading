@@ -92,3 +92,11 @@ Fed-day analysis in plain language is the model to follow.
   `scripts/backtest_qld_sleeve.py`, Yahoo data cached in `research/data/`).
   Its numbers reproduced exactly; verdict: same 200-DMA trend idea as ours at
   2x leverage, 46% worst loss, tranche clock is the only real risk control.
+
+## SEC EDGAR access (added 2026-10-01)
+
+- `scripts/edgar_13f.py` needs `SEC_USER_AGENT="Your Name your-email@example.com"`
+  (SEC fair-access rule: automated requests must name the operator and a contact
+  email; `www.sec.gov/Archives` returns 403 "undeclared automated tool" otherwise).
+  Sanjay chooses what identity to declare. Never invent one, and never reuse his
+  account email for it without him saying so.
