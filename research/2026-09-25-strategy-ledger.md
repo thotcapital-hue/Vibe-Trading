@@ -166,3 +166,14 @@ of 38% or more. Any plan sized on 6y numbers should be stress-sized on these.
    SPY after the lag with a Sharpe above the index, otherwise it is a watchlist only.
 8. **Weekly forecast scorecard**: log any service's weekly call, grade it against the
    outcome and the options-implied range, keep a running hit rate versus 50%.
+9. **Indian-led companies (tenure-matched), result and next test.** `scripts/indian_led_study.py`:
+   20 US-listed companies, each measured only while its Indian-origin CEO/founder was in
+   charge, vs SPY and QQQ on the same days (Yahoo total return). Basket (equal weight,
+   2008-2026): 22.6% / -50% / Sharpe 0.93 vs SPY 11.3% / 0.64 and QQQ 16.4% / 0.79; alpha vs
+   QQQ +6.6%. But 10 of 20 beat QQQ, median excess vs QQQ +0.7%, and the average company
+   trails QQQ by about 1%; Micron, Rubrik, Arista, Palo Alto and MongoDB carry the basket.
+   List built from names that are known winners (selection bias), dates from memory
+   (verify), Uber is Iranian-American and was excluded. NEXT: same test on a matched
+   control group of non-Indian-led peers (Oracle, Cisco, Salesforce, Intuit, Nvidia, etc.)
+   chosen by sector BEFORE looking at returns; only a gap between the two groups would
+   say anything about leadership.
