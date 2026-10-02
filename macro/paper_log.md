@@ -19,3 +19,6 @@ One line per event, newest last. Format:
 2026-10-01 | QQQ | scan PASS, submit blocked, no trade | bull put 695/690 Nov 6, first tranche x10 | 10 | 0.62 (12.4%) | 4,380 | ABOVE, IVR 48, regime CAUTION; passed all gates at 3:33 PM ET; the --submit re-run was denied by the session's permission classifier ("Real-World Transactions") for the second day running; no order reached Alpaca
 2026-10-01 | SPY | scan, no trade | bull put 730/725 Nov 6 | - | 0.54 (10.9%) | - | ABOVE, IVR 35; below 12% gate
 2026-10-01 | IWM | scan, no trade | put side Nov 6 / Nov 13 (widths 2,3) | - | no positive credit beyond the 1-SD floor 261.67 | - | price 279.25 under its 20-low band 284.46 (not eligible); IVR 30 at the floor (cheap); scanner said Walk
+2026-10-02 | QQQ | scan, no trade | bull put 700/695 Nov 6 | - | 0.55 (11.0%) | - | ABOVE, IVR 44, regime CAUTION; below 12% gate (QQQ +0.9% on the day, premium compressed from yesterday's 12.4%)
+2026-10-02 | SPY | scan, no trade | bull put 735/730 Nov 6 | - | 0.50 (10.1%) | - | ABOVE, IVR 31; below 12% gate
+2026-10-02 | IWM | scan, no trade | bull put 265/262 Nov 6 (widths 2,3) | - | 0.34 (11.5%) | - | price 281.59 under its 20-low band 283.83 (not eligible); IVR 23 < 30 (cheap); below 12% gate
