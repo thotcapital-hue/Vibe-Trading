@@ -22,3 +22,6 @@ One line per event, newest last. Format:
 2026-10-02 | QQQ | scan, no trade | bull put 700/695 Nov 6 | - | 0.55 (11.0%) | - | ABOVE, IVR 44, regime CAUTION; below 12% gate (QQQ +0.9% on the day, premium compressed from yesterday's 12.4%)
 2026-10-02 | SPY | scan, no trade | bull put 735/730 Nov 6 | - | 0.50 (10.1%) | - | ABOVE, IVR 31; below 12% gate
 2026-10-02 | IWM | scan, no trade | bull put 265/262 Nov 6 (widths 2,3) | - | 0.34 (11.5%) | - | price 281.59 under its 20-low band 283.83 (not eligible); IVR 23 < 30 (cheap); below 12% gate
+2026-10-05 | QQQ | scan, no trade | bull put 710/705 Nov 6 | - | 0.56 (11.3%) | - | ABOVE, IVR 45, regime CAUTION; below 12% gate
+2026-10-05 | SPY | scan, no trade | bull put 745/740 Nov 6 | - | 0.53 (10.6%) | - | ABOVE, IVR 31; below 12% gate (SPY +0.8% to 775.84, IV index 15.5%)
+2026-10-05 | IWM | scan, no trade | bull put 267/265 Nov 6 (widths 2,3) | - | 0.23 (11.5%) | - | ribbon eligible again (price 283.59 just above 20-low band 283.16); IVR 24 < 30 (cheap); below 12% gate
