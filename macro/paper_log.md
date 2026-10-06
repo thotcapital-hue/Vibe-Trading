@@ -25,3 +25,6 @@ One line per event, newest last. Format:
 2026-10-05 | QQQ | scan, no trade | bull put 710/705 Nov 6 | - | 0.56 (11.3%) | - | ABOVE, IVR 45, regime CAUTION; below 12% gate
 2026-10-05 | SPY | scan, no trade | bull put 745/740 Nov 6 | - | 0.53 (10.6%) | - | ABOVE, IVR 31; below 12% gate (SPY +0.8% to 775.84, IV index 15.5%)
 2026-10-05 | IWM | scan, no trade | bull put 267/265 Nov 6 (widths 2,3) | - | 0.23 (11.5%) | - | ribbon eligible again (price 283.59 just above 20-low band 283.16); IVR 24 < 30 (cheap); below 12% gate
+2026-10-06 | QQQ | scan PASS, submit blocked, no trade | bull put 708/703 Nov 20, first tranche x10 | 10 | 0.60 (12.0%) | 4,400 | ABOVE, IVR 41, regime CAUTION; passed all gates at 3:33 PM ET (12.0% exactly at the gate, OI 158/164 thin); the --submit re-run was denied by the session's permission classifier ("Real-World Transactions") for the third time; no order reached Alpaca
+2026-10-06 | SPY | scan, no trade | bull put 743/738 Nov 20 | - | 0.53 (10.5%) | - | ABOVE but IVR 28 < 30 (cheap, first time under the floor); below 12% gate; IV index 14.9%
+2026-10-06 | IWM | scan, no trade | bull put 265/263 Nov 6 (widths 2,3) | - | 0.23 (11.3%) | - | price 280.86 back under its 20-low band 282.49 (not eligible); IVR 24 < 30 (cheap); below 12% gate
