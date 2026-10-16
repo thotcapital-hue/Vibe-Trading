@@ -1,0 +1,15 @@
+{
+  "_note": "name_contains is checked against the SEC's registered name at run time; a CIK whose name does not match is refused. Only Pershing was confirmed on 2026-10-01 (others were blocked by the SEC header rule and must be confirmed on first run). Criteria: concentrated, low turnover, long horizon.",
+  "managers": [
+    {"label": "Pershing Square", "cik": 1336528, "name_contains": "PERSHING SQUARE"},
+    {"label": "Berkshire Hathaway", "cik": 1067983, "name_contains": "BERKSHIRE"},
+    {"label": "Baupost", "cik": 1061768, "name_contains": "BAUPOST"},
+    {"label": "Greenlight", "cik": 1079114, "name_contains": "GREENLIGHT"},
+    {"label": "Third Point", "cik": 1040273, "name_contains": "THIRD POINT"},
+    {"label": "Lone Pine", "cik": 1061165, "name_contains": "LONE PINE"},
+    {"label": "Duquesne", "cik": 1536411, "name_contains": "DUQUESNE"},
+    {"label": "Akre", "cik": 1112520, "name_contains": "AKRE"},
+    {"label": "Trian", "cik": 1345471, "name_contains": "TRIAN"},
+    {"label": "ValueAct", "cik": 1418814, "name_contains": "VALUEACT"}
+  ]
+}
