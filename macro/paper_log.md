@@ -57,3 +57,6 @@ One line per event, newest last. Format:
 2026-10-19 | QQQ | scan, no trade | bull put 675/670 Nov 20 | - | 0.60 (11.9%) | - | QQQ +1.5% to 720.48 but still 17 pts under its 20-low band 737.22 (ribbon not eligible); IVR 60 rich; credit 11.9% just under the 12% gate
 2026-10-19 | SPY | scan, no trade | bull put 736/731 Nov 20 | - | 0.51 (10.3%) | - | ribbon eligible again by 0.19 (close 768.20 vs 20-low band 768.01); IVR 44; below 12% gate; only eligible fund
 2026-10-19 | IWM | scan, no trade | bull put 255/253 Nov 20 (widths 2,3) | - | 0.21 (10.5%) | - | ribbon OVERLAP (not eligible); IVR 33 over the floor; below 12% gate
+2026-10-20 | QQQ | scan, no trade | bull put 667/662 Nov 30 | - | 0.61 (12.3%) | - | credit gate cleared (skew +6.1 vol, IVR 60 rich) but QQQ 717.81 still 18 pts under its 20-low band 735.69 (ribbon not eligible), scanner said WAIT; fourth day under the band
+2026-10-20 | SPY | scan, no trade | bull put 737/732 Nov 20 | - | 0.51 (10.3%) | - | ribbon eligible (close 768.51 vs 20-low band 767.59, margin 0.92); IVR 41; below 12% gate; regime CAUTION score +2 with no flags
+2026-10-20 | IWM | scan, no trade | bull put 260/258 Nov 20 (widths 2,3) | - | 0.22 (11.0%) | - | IWM +1.6% to 275.89; ribbon OVERLAP (not eligible); IVR 29 < 30 (cheap again); below 12% gate
