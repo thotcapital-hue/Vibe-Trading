@@ -1,0 +1,34 @@
+ticker,n_managers,sum_portfolio_weight,managers
+AMZN,4,0.409,Baupost;Third Point;Duquesne;ValueAct
+V,4,0.264,Baupost;Lone Pine;Akre;ValueAct
+GOOGL,4,0.205,Berkshire Hathaway;Third Point;Lone Pine;Duquesne
+TSM,3,0.115,Third Point;Lone Pine;Duquesne
+HUT,3,0.082,Third Point;Lone Pine;Duquesne
+KKR,2,0.147,Akre;ValueAct
+MCO,2,0.140,Berkshire Hathaway;Akre
+GOOG,2,0.122,Berkshire Hathaway;Baupost
+RKT,2,0.119,Duquesne;ValueAct
+CRM,2,0.105,Akre;ValueAct
+BN,2,0.103,Lone Pine;Akre
+G7997R103,2,0.086,Lone Pine;Duquesne
+N07059210,2,0.082,Third Point;Lone Pine
+UNP,2,0.080,Baupost;Third Point
+CRS,2,0.065,Third Point;Lone Pine
+G25508105,2,0.064,Third Point;Duquesne
+MTZ,2,0.060,Third Point;Lone Pine
+PFGC,2,0.056,Third Point;Lone Pine
+LYV,2,0.055,Third Point;ValueAct
+G54950103,2,0.054,Lone Pine;Duquesne
+TTMI,2,0.052,Third Point;Lone Pine
+CVNA,2,0.045,Lone Pine;Duquesne
+LLYVK,2,0.044,Berkshire Hathaway;ValueAct
+COF,2,0.038,Berkshire Hathaway;Third Point
+CCC,2,0.032,Duquesne;Akre
+DAL,2,0.031,Berkshire Hathaway;Duquesne
+SE,2,0.027,Lone Pine;Duquesne
+TDG,2,0.025,Third Point;Lone Pine
+DHR,2,0.024,Third Point;Duquesne
+G11448100,2,0.022,Lone Pine;Duquesne
+LLYVA,2,0.016,Berkshire Hathaway;ValueAct
+DHI,2,0.011,Berkshire Hathaway;Duquesne
+AUR,2,0.003,Third Point;Duquesne
